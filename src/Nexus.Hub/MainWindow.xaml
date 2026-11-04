@@ -358,6 +358,12 @@
                 <TextBlock Text="Rename &amp; Renumber" Style="{StaticResource RailLabel}" />
               </StackPanel>
             </Button>
+            <Button Style="{StaticResource Nexus.RailButton}" Command="{Binding SheetIndexCommand}" ToolTip="Sheet index: keep the Revit dummy sheets for CAD drawings matched to their DWGs">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE8A5;" Style="{StaticResource RailGlyph}" />
+                <TextBlock Text="Sheet index" Style="{StaticResource RailLabel}" />
+              </StackPanel>
+            </Button>
             <Button Style="{StaticResource Nexus.RailButton}" Click="OnHistory" ToolTip="History: snapshots and every change applied with Nexus">
               <StackPanel Orientation="Horizontal">
                 <TextBlock Text="&#xE81C;" Style="{StaticResource RailGlyph}" />
@@ -921,6 +927,7 @@
                 <ContextMenu>
                   <MenuItem Header="Print &amp; PDF…" Click="OnPrint" />
                   <MenuItem Header="Rename &amp; Renumber…" Click="OnRename" InputGestureText="Ctrl+R" />
+                  <MenuItem Header="Sheet index (dummy sheets)…" Command="{Binding SheetIndexCommand}" />
                   <MenuItem Header="Markups…" Click="OnMarkups" />
                   <MenuItem Header="History and snapshots…" Click="OnHistory" />
                   <MenuItem Header="Sheet health" Click="OnOpenHealth" />

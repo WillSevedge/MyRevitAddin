@@ -75,6 +75,9 @@ public sealed class AgentConnection : IAsyncDisposable
     /// <summary>True when the agent can create sheets.</summary>
     public bool CanCreateSheets => Host.Features.Contains(AgentFeatures.CreateSheets);
 
+    /// <summary>Create-sheets requests may also update sheets (dummy sheet sync for the drawing index).</summary>
+    public bool CanSyncSheets => Host.Features.Contains(AgentFeatures.SyncSheets);
+
     /// <summary>True when the agent can make PDFs of sheets.</summary>
     public bool CanExportPdf => Host.Features.Contains(AgentFeatures.ExportPdf);
 

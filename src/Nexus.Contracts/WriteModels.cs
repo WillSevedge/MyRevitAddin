@@ -11,6 +11,11 @@ public static class AgentFeatures
     public const string ExportPdf = "exportPdf";
     /// <summary>The agent accepts <see cref="MessageTypes.CreateSheets"/> requests.</summary>
     public const string CreateSheets = "createSheets";
+    /// <summary>
+    /// <see cref="MessageTypes.CreateSheets"/> also updates existing sheets (<see cref="NewSheet.Update"/>), turns
+    /// placeholders into sheets, shows sheets in the sheet list and puts a revision on them.
+    /// </summary>
+    public const string SyncSheets = "syncSheets";
     /// <summary>The agent offers tools for AI assistants (<see cref="MessageTypes.ListTools"/>, <see cref="MessageTypes.CallTool"/>).</summary>
     public const string Tools = "tools";
 }
@@ -100,6 +105,8 @@ public sealed class CreateSheetsRequest
 {
     public string DocumentId { get; set; } = "";
     public List<NewSheet> Sheets { get; set; } = new();
+    /// <summary>New sheets get no title block (dummy sheets for drawings made in another program).</summary>
+    public bool NoTitleBlock { get; set; }
 }
 
 public sealed class NewSheet
@@ -111,6 +118,16 @@ public sealed class NewSheet
     /// separated by '|' ("Sheet Status|Status"): the first one the sheet has is set. Missing ones are reported.
     /// </summary>
     public Dictionary<string, string> Values { get; set; } = new();
+
+    // Sync (agents with AgentFeatures.SyncSheets; others ignore these and skip existing numbers):
+    /// <summary>A sheet with this number already there is updated (name, values, list, revision) instead of skipped.</summary>
+    public bool Update { get; set; }
+    /// <summary>A placeholder sheet with this number becomes a real sheet (same number, name and parameters), so it can carry revisions.</summary>
+    public bool ReplacePlaceholder { get; set; }
+    /// <summary>Set "Appears In Sheet List" (true: shown in the drawing index).</summary>
+    public bool? ShowInSheetList { get; set; }
+    /// <summary>Show the project revision with this number (e.g. "B", "0") on the sheet. It is never created: a missing one is reported.</summary>
+    public string? Revision { get; set; }
 }
 
 public sealed class CreateSheetsResult
@@ -127,6 +144,10 @@ public sealed class NewSheetResult
 {
     public string Number { get; set; } = "";
     public bool Created { get; set; }
+    /// <summary>An existing sheet was changed (<see cref="NewSheet.Update"/>).</summary>
+    public bool Updated { get; set; }
+    /// <summary>What was changed on the sheet ("placeholder made a sheet", "renamed", "revision B shown"...).</summary>
+    public List<string> Changes { get; set; } = new();
     /// <summary>The new sheet's id (UniqueId), when created.</summary>
     public string? Id { get; set; }
     /// <summary>Why it was not created, or what was left out (a parameter the sheet does not have).</summary>

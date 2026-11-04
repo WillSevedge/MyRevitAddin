@@ -108,6 +108,8 @@ public sealed class AgentServer<TDoc> : IDisposable where TDoc : class
             host.Features.Add(AgentFeatures.ExportPdf);
         if (_sheets is not null && !host.Features.Contains(AgentFeatures.CreateSheets))
             host.Features.Add(AgentFeatures.CreateSheets);
+        if (_sheets is not null && !host.Features.Contains(AgentFeatures.SyncSheets))
+            host.Features.Add(AgentFeatures.SyncSheets);
         if (_tools is not null && !host.Features.Contains(AgentFeatures.Tools))
             host.Features.Add(AgentFeatures.Tools);
         return host;

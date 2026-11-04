@@ -27,6 +27,11 @@ internal sealed class UiSettings
     public bool InspectorPinned { get; set; }
     /// <summary>Markups: the PDFs (Bluebeam sets) last read.</summary>
     public List<string> MarkupPdfs { get; set; } = new();
+    /// <summary>Sheet index: the Revit model that holds the drawing index, the shared parameter its schedules sort by,
+    /// and whether new dummy sheets get no title block.</summary>
+    public string? SheetIndexDocument { get; set; }
+    public string? SheetIndexDiscipline { get; set; }
+    public bool SheetIndexNoTitleBlock { get; set; } = true;
 
     /// <summary>
     /// Version of the default Sheets columns. When the defaults change, the saved column choice for

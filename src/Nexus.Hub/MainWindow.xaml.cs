@@ -352,6 +352,7 @@ public partial class MainWindow : Window
         Action(_vm.IsCompact ? "Comfortable rows" : "Compact rows", "\uE8FD", () => _vm.IsCompact = !_vm.IsCompact, "Table density", "density row height dense");
         Action(_vm.IsRailExpanded ? "Collapse the navigation" : "Expand the navigation", "\uE700", () => _vm.IsRailExpanded = !_vm.IsRailExpanded, "", "rail sidebar menu");
         Action("Connect Claude (AI assistants)…", "\uE8F2", () => OnConnectClaude(this, new RoutedEventArgs()), "", "mcp ai assistant claude");
+        Command("Sheet index (dummy sheets for CAD drawings)", "\uE8A5", _vm.SheetIndexCommand, "Keep Revit dummy sheets matched to their DWGs", "index dummy placeholder sheet list revision cad dwg");
         Action("Search the table", "\uE721", () => { SearchBox.Focus(); SearchBox.SelectAll(); }, "Ctrl+F", "filter find");
 
         foreach (var d in _vm.Datasets)
