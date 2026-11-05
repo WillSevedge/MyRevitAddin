@@ -34,4 +34,7 @@ public partial class PrintWindow : Window
         if (_vm.Selected?.PdfPath is { } pdf && System.IO.File.Exists(pdf))
             Process.Start(new ProcessStartInfo(pdf) { UseShellExecute = true });
     }
+
+    /// <summary>The window is not a dialog (it stays open beside the hub), so IsCancel alone does not close it.</summary>
+    private void OnClose(object sender, RoutedEventArgs e) => Close();
 }

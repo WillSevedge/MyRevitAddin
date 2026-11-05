@@ -33,7 +33,7 @@
         <Button Content="Print…" Command="{Binding PrintCommand}" Padding="16,6" Margin="8,0,0,0"
                 ToolTip="Print the ticked sheets to any printer (PDFs are made first where missing)" />
         <Button Content="Create PDFs" Command="{Binding CreateCommand}" Style="{DynamicResource AccentButtonStyle}" Padding="16,6" Margin="8,0,0,0" />
-        <Button Content="Close" IsCancel="True" Padding="16,6" Margin="8,0,0,0" />
+        <Button Content="Close" IsCancel="True" Click="OnClose" Padding="16,6" Margin="8,0,0,0" />
       </StackPanel>
       <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
         <ProgressBar IsIndeterminate="True" Height="3" Margin="0,0,0,6" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
