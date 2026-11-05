@@ -397,7 +397,6 @@ public partial class MainWindow : Window
         new HistoryWindow(new HistoryViewModel(_vm)) { Owner = this }.ShowDialog();
     }
 
-    /// <summary>The selected rows (more than one), else every row shown, in the order shown.</summary>
     /// <summary>Rename &amp; Renumber: from a view without sheet numbers and names, it switches to Sheets first.</summary>
     private async Task OpenRenameAsync()
     {
@@ -406,23 +405,22 @@ public partial class MainWindow : Window
         {
             if (!await _vm.ShowSheetsAsync()) return;
         }
-        var selected = SelectedRows().ToHashSet();
-        var shown = TableGrid.Items.OfType<DataRowView>().ToList();
-        var views = selected.Count > 1 ? shown.Where(selected.Contains).ToList() : shown;
-        var rows = views.Select(_vm.TableRowOf).OfType<Nexus.Hub.Core.TableRow>().ToList();
-        if (rows.Count == 0)
+        var selectedViews = SelectedRows().ToHashSet();
+        var shownViews = TableGrid.Items.OfType<DataRowView>().ToList();
+        var shown = shownViews.Select(_vm.TableRowOf).OfType<Nexus.Hub.Core.TableRow>().ToList();
+        var selected = shownViews.Where(selectedViews.Contains).Select(_vm.TableRowOf).OfType<Nexus.Hub.Core.TableRow>().ToList();
+        if (shown.Count == 0)
         {
             _vm.Status = "Nothing to rename: load some data first.";
             return;
         }
-        var fields = _vm.RenameFields(rows);
+        var fields = _vm.RenameFields(selected.Count > 1 ? selected : shown);
         if (fields.Count == 0)
         {
             _vm.Status = "Rename & Renumber changes sheet numbers and names: open the Sheets view (or select sheets that can be edited).";
             return;
         }
-        string scope = selected.Count > 1 ? $"{rows.Count} selected rows, in the order shown" : $"All {rows.Count} rows shown, in the order shown";
-        new RenameWindow(new RenameViewModel(_vm, rows, scope, fields)) { Owner = this }.ShowDialog();
+        new BulkRenameHubWindow(_vm, shown, selected, fields, this).ShowDialog();
     }
 
     /// <summary>Selects one cell (from the health list) and scrolls it into view.</summary>

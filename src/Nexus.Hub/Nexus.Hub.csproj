@@ -34,9 +34,13 @@
     <EmbeddedResource Include="Assets\Nexus.ico" LogicalName="Nexus.ico" />
     <EmbeddedResource Include="Assets\Nexus-tray-white.ico" LogicalName="Nexus-tray-white.ico" />
     <EmbeddedResource Include="Assets\Nexus-tray-black.ico" LogicalName="Nexus-tray-black.ico" />
+    <!-- Shared with the Revit add-in, loaded at run time with XamlReader. -->
+    <EmbeddedResource Include="..\Nexus.Agent.Revit\Rename\BulkRenameWindow.xaml" Link="Rename\BulkRenameWindow.xaml" LogicalName="BulkRenameWindow.xaml" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Nexus.Hub.Core\Nexus.Hub.Core.csproj" />
+    <!-- Rename & Renumber: the same rules engine and layout as Bulk Rename in Revit (Bulk Rename Utility style). -->
+    <ProjectReference Include="..\Nexus.Rename\Nexus.Rename.csproj" />
   </ItemGroup>
 
   <!--

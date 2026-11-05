@@ -327,14 +327,14 @@
     <!-- ===== Header ===== -->
     <DockPanel Grid.Row="0" Margin="0,0,0,10">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-        <TextBlock Text="Rename items in" Style="{StaticResource Label}" Margin="0,0,10,0" />
+        <TextBlock x:Name="ScopeLabel" Text="Rename items in" Style="{StaticResource Label}" Margin="0,0,10,0" />
         <ComboBox x:Name="ScopeCombo" Width="220" />
       </StackPanel>
       <StackPanel Orientation="Horizontal">
         <Border Width="30" Height="30" CornerRadius="7" Background="{DynamicResource Accent}" VerticalAlignment="Center">
           <TextBlock Text="Aa" Foreground="White" FontWeight="Bold" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Border>
-        <TextBlock Text="Bulk Rename" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0" />
+        <TextBlock x:Name="TitleText" Text="Bulk Rename" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0" />
         <TextBlock x:Name="DocText" Foreground="{DynamicResource TextDim}" VerticalAlignment="Center" Margin="12,2,0,0" />
       </StackPanel>
     </DockPanel>
@@ -350,8 +350,8 @@
       <Border Grid.Column="0" Style="{StaticResource Panel}">
         <DockPanel>
           <StackPanel DockPanel.Dock="Top" Margin="14,12,14,6">
-            <TextBlock Text="What to rename" Style="{StaticResource PanelTitle}" />
-            <TextBlock Text="Tick one or more kinds." Style="{StaticResource Hint}" Margin="0,2,0,0" />
+            <TextBlock x:Name="TargetsTitle" Text="What to rename" Style="{StaticResource PanelTitle}" />
+            <TextBlock x:Name="TargetsHint" Text="Tick one or more kinds." Style="{StaticResource Hint}" Margin="0,2,0,0" />
           </StackPanel>
           <ListBox x:Name="TargetsList" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource Text}" Padding="6,0,6,8"
                    ScrollViewer.HorizontalScrollBarVisibility="Disabled">

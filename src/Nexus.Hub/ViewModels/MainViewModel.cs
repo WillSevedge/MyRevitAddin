@@ -798,6 +798,10 @@ public sealed partial class MainViewModel : Observable
         return fields;
     }
 
+    /// <summary>Every column of the table (id and the name users see), for {Column} values in Rename &amp; Renumber.</summary>
+    public IReadOnlyList<(string Id, string Label)> TableColumns =>
+        _table?.Columns.Select(c => (c.Id, c.Label)).ToList() ?? new List<(string, string)>();
+
     /// <summary>The value shown in the grid (including edits not applied yet).</summary>
     public string? CurrentValue(TableRow row, string columnId)
     {
