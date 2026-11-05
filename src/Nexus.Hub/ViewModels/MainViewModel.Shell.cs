@@ -158,4 +158,25 @@ public sealed partial class MainViewModel
         Raise(nameof(OpenFileCount));
         Raise(nameof(TickedFileCount));
     }
+
+    /// <summary>
+    /// Switches to the Sheets view (the sheet tools work on it) and waits until the sheets are read. False when there
+    /// is no Sheets view yet or the user kept unapplied edits.
+    /// </summary>
+    internal async Task<bool> ShowSheetsAsync()
+    {
+        IsData = true;
+        if (IsSheetsView) return true;
+        var sheets = Datasets.FirstOrDefault(d => d.IsSheetIndex);
+        if (sheets is null || !ConfirmDiscardEdits()) return false;
+        _dataset = sheets;
+        Raise(nameof(SelectedDataset));
+        Raise(nameof(WorkspaceTitle));
+        Raise(nameof(DatasetOptions));
+        Raise(nameof(HasOptions));
+        _settings.LastDataset = sheets.Id;
+        _settings.Save();
+        await LoadAsync(confirm: false);
+        return IsSheetsView;
+    }
 }

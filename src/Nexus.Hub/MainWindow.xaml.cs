@@ -223,20 +223,20 @@ public partial class MainWindow : Window
 
     // ------------------------------------------------------------------ rename and renumber
 
-    private void OnRename(object sender, RoutedEventArgs e) => OpenRename();
+    private void OnRename(object sender, RoutedEventArgs e) => Fire(OpenRenameAsync);
 
-    private void OnPrint(object sender, RoutedEventArgs e) => OpenPrint();
+    private void OnPrint(object sender, RoutedEventArgs e) => Fire(OpenPrintAsync);
 
-    private void OpenPrint()
+    /// <summary>Starts work from a click or key; an error reaches the app's handler (the info bar) instead of being lost.</summary>
+    private static async void Fire(Func<Task> work) => await work();
+
+    /// <summary>Print &amp; PDF works on sheets: from another view it switches to Sheets first, then opens.</summary>
+    private async Task OpenPrintAsync()
     {
         TableGrid.CommitEdit(DataGridEditingUnit.Row, true);
-        if (!_vm.IsSheetsView)
+        if (!_vm.IsSheetsView || !_vm.IsData)
         {
-            // Said where it is seen (the info bar of Sheets & data), not only in the status bar.
-            _vm.IsData = true;
-            _vm.Notify(NoticeKind.Info, "Print & PDF works on sheets",
-                "Pick Sheets under Views on the left, then open Print & PDF again.");
-            return;
+            if (!await _vm.ShowSheetsAsync()) return;
         }
         var selected = SelectedRows().ToHashSet();
         var shown = TableGrid.Items.OfType<DataRowView>().ToList();
@@ -338,10 +338,10 @@ public partial class MainWindow : Window
             Action(title, glyph, () => { if (command.CanExecute(null)) command.Execute(null); }, subtitle, keywords, command.CanExecute(null));
 
         Command("Review & apply changes", "\uE73E", _vm.ApplyChangesCommand, _vm.PendingText, "save write commit apply");
-        Action("Print & PDF", "\uE749", OpenPrint, "PDFs, preview and printing of the sheets shown", "plot print pdf publish preview batch", _vm.IsSheetsView);
+        Action("Print & PDF", "\uE749", () => Fire(OpenPrintAsync), "PDFs, preview and printing of the sheets shown", "plot print pdf publish preview batch", _vm.HasPrograms);
         Action("Markups (Bluebeam)", "\uE70F", OpenMarkups, "Comments made in Bluebeam on the PDFs, by sheet", "bluebeam revu markups comments review pdf annotations", true);
         Command("Discard changes", "\uE7A7", _vm.DiscardChangesCommand, "Undo every edit not applied yet", "undo revert cancel");
-        Action("Rename & Renumber…", "\uE8AC", OpenRename, "Sheet numbers and names of the selected sheets, or every sheet shown", "renumber sequence replace find case prefix suffix sheet number name");
+        Action("Rename & Renumber…", "\uE8AC", () => Fire(OpenRenameAsync), "Sheet numbers and names of the selected sheets, or every sheet shown", "renumber sequence replace find case prefix suffix sheet number name");
         Action("Sheet health", "\uE95E", () => _vm.Health.IsOpen = true, _vm.Health.Summary, "check qa qc issues errors duplicates", _vm.Health.IsAvailable);
         Action("History and snapshots", "\uE81C", OpenHistory, "What changed since an issue; change log", "snapshot compare changes log audit");
         Command("Show in model", "\uE8A7", _vm.ShowInModelCommand, "Open or zoom to the selected rows in their program", "zoom select open");
@@ -398,9 +398,14 @@ public partial class MainWindow : Window
     }
 
     /// <summary>The selected rows (more than one), else every row shown, in the order shown.</summary>
-    private void OpenRename()
+    /// <summary>Rename &amp; Renumber: from a view without sheet numbers and names, it switches to Sheets first.</summary>
+    private async Task OpenRenameAsync()
     {
         TableGrid.CommitEdit(DataGridEditingUnit.Row, true);
+        if (!_vm.IsSheetsView && _vm.RenameFields(TableGrid.Items.OfType<DataRowView>().Select(_vm.TableRowOf).OfType<Nexus.Hub.Core.TableRow>().ToList()).Count == 0)
+        {
+            if (!await _vm.ShowSheetsAsync()) return;
+        }
         var selected = SelectedRows().ToHashSet();
         var shown = TableGrid.Items.OfType<DataRowView>().ToList();
         var views = selected.Count > 1 ? shown.Where(selected.Contains).ToList() : shown;
@@ -589,7 +594,7 @@ public partial class MainWindow : Window
             case Key.V when ctrl: Paste(); e.Handled = true; break;
             case Key.D when ctrl: FillDown(); e.Handled = true; break;
             case Key.H when ctrl: FindReplace(); e.Handled = true; break;
-            case Key.R when ctrl: OpenRename(); e.Handled = true; break;
+            case Key.R when ctrl: Fire(OpenRenameAsync); e.Handled = true; break;
             case Key.Z when ctrl: Revert(); e.Handled = true; break;
             case Key.Delete when Keyboard.Modifiers == ModifierKeys.None: Clear(); e.Handled = true; break;
             case Key.F2 when SelectedCellsOrdered().Count > 1: SetValue(); e.Handled = true; break;
