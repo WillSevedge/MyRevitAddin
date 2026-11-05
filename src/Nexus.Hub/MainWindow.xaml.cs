@@ -232,7 +232,10 @@ public partial class MainWindow : Window
         TableGrid.CommitEdit(DataGridEditingUnit.Row, true);
         if (!_vm.IsSheetsView)
         {
-            _vm.Status = "Print & PDF works on sheets: open the Sheets view.";
+            // Said where it is seen (the info bar of Sheets & data), not only in the status bar.
+            _vm.IsData = true;
+            _vm.Notify(NoticeKind.Info, "Print & PDF works on sheets",
+                "Pick Sheets under Views on the left, then open Print & PDF again.");
             return;
         }
         var selected = SelectedRows().ToHashSet();
@@ -242,7 +245,11 @@ public partial class MainWindow : Window
         var print = _vm.CreatePrint(views, selection);
         if (print is null)
         {
-            _vm.Status = "No sheets to print: tick some files and load the Sheets view.";
+            _vm.IsData = true;
+            _vm.Notify(NoticeKind.Info, "No sheets loaded yet",
+                _vm.HasPrograms
+                    ? "Tick the files to print under Sources on the left (or Reload), then open Print & PDF again."
+                    : "Open Revit or AutoCAD with the Nexus add-in; once its files show here and are ticked, open Print & PDF again.");
             return;
         }
         new PrintWindow(print) { Owner = this }.Show();
