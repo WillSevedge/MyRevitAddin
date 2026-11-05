@@ -1,0 +1,89 @@
+<Project>
+  <!--
+    Host version matrix. The host year is taken from the configuration name
+    (Debug.2026 / Release.2026). Plain Debug/Release default to DefaultHostYear.
+
+    To add a new host version (e.g. 2027):
+      1. Add Debug.2027;Release.2027 to <Configurations> in Directory.Build.props
+         and to the solution's configuration list.
+      2. Add a PropertyGroup below for 2027 with its target framework, API
+         package versions and AutoCAD release number (R-number).
+      3. If the new framework differs (e.g. net11.0), add it to
+         SharedTargetFrameworks so the shared libraries multi-target.
+    Nothing else in the code changes.
+
+    Supported years and their runtimes:
+      2024  .NET Framework 4.8   (Revit 2024, AutoCAD/Civil 3D/Plant 3D 2024, R24.3)
+      2025  .NET 8               (Revit 2025, AutoCAD/Civil 3D/Plant 3D 2025, R25.0)
+      2026  .NET 10              (Revit 2026 with API 26.5+, AutoCAD family 2026, R25.1)
+      2027  .NET 10              (Revit 2027, AutoCAD family 2027, R26.0)
+    The hub is one .NET 10 program for every year; only the add-ins are built per year
+    (build\Build-AllYears.cmd builds and deploys every year). The compile-only
+    reference packages are used when the product is not installed on the build machine.
+    Code that differs by year uses the HOST2025_OR_GREATER... symbols (Directory.Build.props).
+  -->
+  <PropertyGroup>
+    <DefaultHostYear>2026</DefaultHostYear>
+    <HostYear Condition="'$(HostYear)' == '' and $(Configuration.Contains('.20'))">$(Configuration.Substring($([MSBuild]::Add($(Configuration.IndexOf('.')), 1))))</HostYear>
+    <HostYear Condition="'$(HostYear)' == ''">$(DefaultHostYear)</HostYear>
+    <!-- Target frameworks the host-neutral libraries are built for. -->
+    <SharedTargetFrameworks>net48;net8.0;net10.0</SharedTargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(HostYear)' == '2024'">
+    <HostTargetFramework>net48</HostTargetFramework>
+    <RevitApiPackageVersion>2024.3.60</RevitApiPackageVersion>
+    <AutoCadApiPackageVersion>24.3.0</AutoCadApiPackageVersion>
+    <Civil3DApiPackageVersion>13.6.1781</Civil3DApiPackageVersion>
+    <AutoCadSeries>R24.3</AutoCadSeries>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(HostYear)' == '2025'">
+    <HostTargetFramework>net8.0-windows</HostTargetFramework>
+    <RevitApiPackageVersion>2025.4.60</RevitApiPackageVersion>
+    <!-- 25.0.2 was republished for .NET 10; 25.0.1 is the last .NET 8 build. -->
+    <AutoCadApiPackageVersion>25.0.1</AutoCadApiPackageVersion>
+    <Civil3DApiPackageVersion>13.7.1175</Civil3DApiPackageVersion>
+    <AutoCadSeries>R25.0</AutoCadSeries>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(HostYear)' == '2026'">
+    <HostTargetFramework>net10.0-windows</HostTargetFramework>
+    <!-- Compile-only reference packages, used ONLY when the product is not installed
+         on the build machine (e.g. CI). Never copied to the output. -->
+    <RevitApiPackageVersion>2026.4.10</RevitApiPackageVersion>
+    <AutoCadApiPackageVersion>25.1.0</AutoCadApiPackageVersion>
+    <Civil3DApiPackageVersion>13.8.1516</Civil3DApiPackageVersion>
+    <AutoCadSeries>R25.1</AutoCadSeries>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(HostYear)' == '2027'">
+    <HostTargetFramework>net10.0-windows</HostTargetFramework>
+    <RevitApiPackageVersion>2027.3.0</RevitApiPackageVersion>
+    <AutoCadApiPackageVersion>26.0.0</AutoCadApiPackageVersion>
+    <Civil3DApiPackageVersion>13.9.628</Civil3DApiPackageVersion>
+    <AutoCadSeries>R26.0</AutoCadSeries>
+  </PropertyGroup>
+
+  <!-- Symbols for code that differs by year: HOST2026, HOST2025_OR_GREATER, HOST_NETFRAMEWORK... -->
+  <PropertyGroup>
+    <HostYearSymbols>HOST$(HostYear)</HostYearSymbols>
+    <HostYearSymbols Condition="$(HostYear) &gt;= 2024">$(HostYearSymbols);HOST2024_OR_GREATER</HostYearSymbols>
+    <HostYearSymbols Condition="$(HostYear) &gt;= 2025">$(HostYearSymbols);HOST2025_OR_GREATER</HostYearSymbols>
+    <HostYearSymbols Condition="$(HostYear) &gt;= 2026">$(HostYearSymbols);HOST2026_OR_GREATER</HostYearSymbols>
+    <HostYearSymbols Condition="$(HostYear) &gt;= 2027">$(HostYearSymbols);HOST2027_OR_GREATER</HostYearSymbols>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(HostTargetFramework)' == ''">
+    <!-- No row for this year: fail with a self-explanatory target framework name. -->
+    <HostTargetFramework>add-a-row-for-$(HostYear)-in-build-HostVersions.props</HostTargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <ProgramFilesDir>$([System.Environment]::GetEnvironmentVariable('ProgramW6432'))</ProgramFilesDir>
+    <ProgramFilesDir Condition="'$(ProgramFilesDir)' == ''">$([System.Environment]::GetEnvironmentVariable('ProgramFiles'))</ProgramFilesDir>
+    <RevitInstallDir Condition="'$(RevitInstallDir)' == ''">$(ProgramFilesDir)\Autodesk\Revit $(HostYear)\</RevitInstallDir>
+    <AutoCadInstallDir Condition="'$(AutoCadInstallDir)' == ''">$(ProgramFilesDir)\Autodesk\AutoCAD $(HostYear)\</AutoCadInstallDir>
+    <UserAppData>$([System.Environment]::GetFolderPath(SpecialFolder.ApplicationData))</UserAppData>
+  </PropertyGroup>
+</Project>

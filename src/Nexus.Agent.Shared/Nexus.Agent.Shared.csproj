@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Common agent plumbing shared by the Revit and AutoCAD agents.
+       BCL only: this assembly is loaded inside the host process. -->
+  <PropertyGroup>
+    <TargetFrameworks>$(SharedTargetFrameworks)</TargetFrameworks>
+    <RootNamespace>Nexus.Agent</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Nexus.Contracts\Nexus.Contracts.csproj" />
+  </ItemGroup>
+</Project>

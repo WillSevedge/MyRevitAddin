@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "AutoCAD 2026": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Program Files\\Autodesk\\AutoCAD 2026\\acad.exe",
+      "commandLineArgs": "/nologo"
+    },
+    "Civil 3D 2026 (Imperial)": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Program Files\\Autodesk\\AutoCAD 2026\\acad.exe",
+      "commandLineArgs": "/ld \"C:\\Program Files\\Autodesk\\AutoCAD 2026\\AecBase.dbx\" /p \"<<C3D_Imperial>>\" /product C3D /language en-US"
+    }
+  }
+}

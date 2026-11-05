@@ -1,0 +1,13 @@
+{
+  "//": "Fallback Properties-palette categories for properties whose COM object does not report one (or for .NET-only properties). First match wins; names are case-insensitive.",
+  "categories": {
+    "General": [ "Color", "TrueColor", "Layer", "Linetype", "LinetypeScale", "PlotStyleName", "LineWeight", "Lineweight", "Transparency", "EntityTransparency", "Hyperlink", "Hyperlinks", "Thickness", "Material", "Visible" ],
+    "3D Visualization": [ "MaterialId", "ShadowDisplay", "ReceiveShadows", "CastShadows" ],
+    "Geometry": [ "Position", "Center", "Radius", "Diameter", "StartPoint", "EndPoint", "Normal", "InsertionPoint", "Rotation", "ScaleFactors", "XScaleFactor", "YScaleFactor", "ZScaleFactor", "Area", "Length", "Delta", "Angle", "StartAngle", "EndAngle", "ArcLength", "Closed", "Elevation", "GeometricExtents", "CenterPoint" ],
+    "Text": [ "TextString", "Contents", "Text", "TextStyleName", "TextStyle", "TextStyleId", "StyleName", "Attachment", "TextHeight", "Height", "ObliqueAngle", "WidthFactor", "Justify", "HorizontalMode", "VerticalMode", "LineSpacingFactor", "LineSpacingStyle", "BackgroundFill", "Annotative" ],
+    "Plot": [ "PlotSettingsName", "PlotConfigurationName", "ConfigName", "CanonicalMediaName", "PlotPaperSize", "PlotPaperUnits", "PaperUnits", "PlotRotation", "PlotType", "PlotCentered", "CenterPlot", "PlotOrigin", "StdScale", "StandardScale", "UseStandardScale", "CustomPrintScale", "ScaleLineweights", "PrintLineweights", "PlotHidden", "PlotTransparency", "DrawViewportsFirst", "PlotViewportBorders", "PlotViewportsFirst", "ShadePlot", "ShadePlotResLevel", "ShadePlotCustomDpi", "PlotWithLineweights", "PlotWithPlotStyles", "PlotAsRaster" ],
+    "Plot style": [ "CurrentStyleSheet", "StyleSheet", "PlotPlotStyles", "ShowPlotStyles" ],
+    "View": [ "ViewCenter", "ViewHeight", "ViewTarget", "ViewDirection", "TwistAngle", "Width", "LensLength", "FrontClipDistance", "BackClipDistance" ],
+    "Misc": [ "CustomScale", "Locked", "DisplayLocked", "On", "Number", "AnnotationScale", "UcsPerViewport", "UcsIconVisible", "UcsIconAtOrigin", "UcsName", "VisualStyleId", "NonRectClipOn", "NonRectClipEntityId", "Clipped" ]
+  }
+}

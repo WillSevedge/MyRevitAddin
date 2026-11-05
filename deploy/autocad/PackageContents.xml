@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Nexus autoloader bundle. Generated into
+  %APPDATA%\Autodesk\ApplicationPlugins\Nexus.bundle\PackageContents.xml by the build.
+  Platform="AutoCAD*" loads the core agent in AutoCAD and every AutoCAD-based
+  vertical (Civil 3D, Plant 3D, Map 3D, ...). Vertical modules (Civil 3D, Plant 3D) are loaded
+  by the core at runtime, only when the vertical is detected.
+  One <Components> element per supported release (2024-2027); each AutoCAD loads only its own.
+-->
+<ApplicationPackage SchemaVersion="1.0"
+                    AutodeskProduct="AutoCAD"
+                    ProductType="Application"
+                    Name="Nexus Agent"
+                    Description="Connects AutoCAD, Civil 3D and Plant 3D to the Nexus hub application."
+                    AppVersion="0.1.0"
+                    Author="Nexus"
+                    Icon="./Contents/Resources/Nexus.ico"
+                    ProductCode="{8C2B6F40-3E1D-4B7A-9E52-6A0F1D3C7B21}"
+                    UpgradeCode="{1F9E3A57-2C4B-4D8E-A6B1-7E0C5D2F9A34}">
+  <CompanyDetails Name="Nexus" />
+  <Components Description="AutoCAD 2024 family">
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R24.3" SeriesMax="R24.3" />
+    <ComponentEntry AppName="NexusAgent2024"
+                    ModuleName="./Contents/2024/Nexus.Agent.Acad.dll"
+                    AppDescription="Nexus agent (AutoCAD 2024 family)"
+                    LoadOnAutoCADStartup="True" />
+    <!-- Print & PDF in AutoCAD's Core Console (only does anything when the hub runs a job). -->
+    <ComponentEntry AppName="NexusPdf2024"
+                    ModuleName="./Contents/2024/Nexus.Agent.Acad.Console.dll"
+                    AppDescription="Nexus PDFs (AutoCAD 2024 family)"
+                    LoadOnAutoCADStartup="True" />
+  </Components>
+  <Components Description="AutoCAD 2025 family">
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R25.0" SeriesMax="R25.0" />
+    <ComponentEntry AppName="NexusAgent2025"
+                    ModuleName="./Contents/2025/Nexus.Agent.Acad.dll"
+                    AppDescription="Nexus agent (AutoCAD 2025 family)"
+                    LoadOnAutoCADStartup="True" />
+    <!-- Print & PDF in AutoCAD's Core Console (only does anything when the hub runs a job). -->
+    <ComponentEntry AppName="NexusPdf2025"
+                    ModuleName="./Contents/2025/Nexus.Agent.Acad.Console.dll"
+                    AppDescription="Nexus PDFs (AutoCAD 2025 family)"
+                    LoadOnAutoCADStartup="True" />
+  </Components>
+  <Components Description="AutoCAD 2026 family">
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R25.1" SeriesMax="R25.1" />
+    <ComponentEntry AppName="NexusAgent2026"
+                    ModuleName="./Contents/2026/Nexus.Agent.Acad.dll"
+                    AppDescription="Nexus agent (AutoCAD 2026 family)"
+                    LoadOnAutoCADStartup="True" />
+    <!-- Print & PDF in AutoCAD's Core Console (only does anything when the hub runs a job). -->
+    <ComponentEntry AppName="NexusPdf2026"
+                    ModuleName="./Contents/2026/Nexus.Agent.Acad.Console.dll"
+                    AppDescription="Nexus PDFs (AutoCAD 2026 family)"
+                    LoadOnAutoCADStartup="True" />
+  </Components>
+  <Components Description="AutoCAD 2027 family">
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R26.0" SeriesMax="R26.0" />
+    <ComponentEntry AppName="NexusAgent2027"
+                    ModuleName="./Contents/2027/Nexus.Agent.Acad.dll"
+                    AppDescription="Nexus agent (AutoCAD 2027 family)"
+                    LoadOnAutoCADStartup="True" />
+    <!-- Print & PDF in AutoCAD's Core Console (only does anything when the hub runs a job). -->
+    <ComponentEntry AppName="NexusPdf2027"
+                    ModuleName="./Contents/2027/Nexus.Agent.Acad.Console.dll"
+                    AppDescription="Nexus PDFs (AutoCAD 2027 family)"
+                    LoadOnAutoCADStartup="True" />
+  </Components>
+  <!-- Next release: copy a block above, change the year, SeriesMin/SeriesMax
+       (from build/HostVersions.props AutoCadSeries) and the module path. -->
+</ApplicationPackage>

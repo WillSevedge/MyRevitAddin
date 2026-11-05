@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Nexus (replace the running hub)": {
+      "commandName": "Project",
+      "commandLineArgs": "--replace"
+    }
+  }
+}

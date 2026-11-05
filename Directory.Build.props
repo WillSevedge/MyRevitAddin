@@ -1,0 +1,49 @@
+<Project>
+  <!--
+    Common settings for every project in the solution.
+    Host (Revit / AutoCAD) version selection lives in build/HostVersions.props.
+  -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Company>Nexus</Company>
+    <Product>Nexus</Product>
+    <Version>0.1.0</Version>
+    <Deterministic>true</Deterministic>
+    <!-- Lets the Windows-only projects compile on non-Windows build agents (CI). -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <!-- Solution configurations are named Debug.2026 / Release.2026 etc. -->
+    <Configurations>Debug;Release;Debug.2024;Release.2024;Debug.2025;Release.2025;Debug.2026;Release.2026;Debug.2027;Release.2027</Configurations>
+    <Optimize Condition="$(Configuration.StartsWith('Release'))">true</Optimize>
+    <DebugType>portable</DebugType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(Configuration.StartsWith('Debug'))">
+    <DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)build/HostVersions.props" />
+
+  <!-- .NET Framework 4.8 builds (2024 add-ins): modern C# features (records, init, required, ranges...) via
+       PolySharp's source-generated polyfills, and System.Text.Json, which .NET 8+ has built in. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="PolySharp" Version="1.15.0" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Include="System.Text.Json" Version="8.0.6" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48' and $(MSBuildProjectName.StartsWith('Nexus.Agent.'))">
+    <Compile Include="$(MSBuildThisFileDirectory)src\Common\NetFrameworkPolyfills.cs" Link="Common\NetFrameworkPolyfills.cs" />
+  </ItemGroup>
+
+  <!-- Add-in projects (one build per program year): their own obj/bin per year, and the year symbols. -->
+  <PropertyGroup Condition="$(MSBuildProjectName.StartsWith('Nexus.Agent.')) and '$(MSBuildProjectName)' != 'Nexus.Agent.Shared'">
+    <IsHostProject>true</IsHostProject>
+    <BaseIntermediateOutputPath>obj\$(HostYear)\</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin\$(HostYear)\</BaseOutputPath>
+    <!-- Output of builds from before the per-year folders must not be compiled in. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**;bin\**</DefaultItemExcludes>
+    <DefineConstants>$(DefineConstants);$(HostYearSymbols)</DefineConstants>
+  </PropertyGroup>
+</Project>

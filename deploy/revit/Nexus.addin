@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Installed to %APPDATA%\Autodesk\Revit\Addins\{year}\Nexus.addin.
+     The assembly path is relative to this file. -->
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>Nexus Agent</Name>
+    <Assembly>Nexus\Nexus.Agent.Revit.dll</Assembly>
+    <FullClassName>Nexus.Agent.Revit.AgentApplication</FullClassName>
+    <AddInId>6F3A1C2E-8B7D-4E59-9A41-2D5C7B9E0A13</AddInId>
+    <VendorId>NEXUS</VendorId>
+    <VendorDescription>Nexus: connects Revit to the Nexus hub application.</VendorDescription>
+  </AddIn>
+</RevitAddIns>

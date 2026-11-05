@@ -1,0 +1,1329 @@
+<Window x:Class="Nexus.Hub.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Nexus.Hub.ViewModels"
+        x:Name="Root"
+        Title="Nexus" Height="900" Width="1560" MinWidth="900" MinHeight="560" WindowStartupLocation="CenterScreen"
+        Icon="Assets/Nexus.ico"
+        Background="{DynamicResource Nexus.Background}" Foreground="{DynamicResource Nexus.Text}"
+        FontFamily="{StaticResource Nexus.Font}" FontSize="{StaticResource Nexus.FontSize.Body}">
+  <!--
+    Shell: navigation rail (Home, Sheets & data, Connections, tools) | the selected workspace | status bar.
+    Styles shared with other windows live in Themes/Tokens.xaml; colours in Themes/Palette.*.xaml.
+  -->
+  <Window.Resources>
+    <CollectionViewSource x:Key="DatasetsView" Source="{Binding Datasets}">
+      <CollectionViewSource.GroupDescriptions>
+        <PropertyGroupDescription PropertyName="Category" />
+      </CollectionViewSource.GroupDescriptions>
+    </CollectionViewSource>
+
+    <!-- Command label: hidden when the command bar is narrow (icon + tooltip only). -->
+    <Style x:Key="CommandLabel" TargetType="TextBlock">
+      <Setter Property="Margin" Value="8,0,0,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding CompactCommands, ElementName=Root}" Value="True">
+          <Setter Property="Visibility" Value="Collapsed" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- Rail label: shown when the rail is expanded. -->
+    <Style x:Key="RailLabel" TargetType="TextBlock">
+      <Setter Property="Margin" Value="14,0,0,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="Visibility" Value="{Binding IsRailExpanded, Converter={StaticResource BoolToVis}}" />
+    </Style>
+    <Style x:Key="RailGlyph" TargetType="TextBlock" BasedOn="{StaticResource Glyph}">
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="Width" Value="20" />
+      <Setter Property="TextAlignment" Value="Center" />
+    </Style>
+
+    <!-- Connection state dot: Tag = a ConnectionState. -->
+    <Style x:Key="StateDot" TargetType="Ellipse">
+      <Setter Property="Width" Value="8" />
+      <Setter Property="Height" Value="8" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Fill" Value="{DynamicResource Nexus.Success}" />
+      <Style.Triggers>
+        <Trigger Property="Tag" Value="{x:Static vm:ConnectionState.Busy}">
+          <Setter Property="Fill" Value="{DynamicResource Nexus.Warning}" />
+        </Trigger>
+        <Trigger Property="Tag" Value="{x:Static vm:ConnectionState.Connecting}">
+          <Setter Property="Fill" Value="{DynamicResource Nexus.Info}" />
+        </Trigger>
+        <Trigger Property="Tag" Value="{x:Static vm:ConnectionState.Error}">
+          <Setter Property="Fill" Value="{DynamicResource Nexus.Danger}" />
+        </Trigger>
+        <Trigger Property="Tag" Value="{x:Static vm:ConnectionState.Disconnected}">
+          <Setter Property="Fill" Value="{DynamicResource Nexus.TextTertiary}" />
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- A program's state as a chip: Tag = a ConnectionState. -->
+    <Style x:Key="StateChip" TargetType="Border" BasedOn="{StaticResource Nexus.Chip}">
+      <Setter Property="Background" Value="{DynamicResource Nexus.SuccessSubtle}" />
+      <Setter Property="TextElement.Foreground" Value="{DynamicResource Nexus.Success}" />
+      <Style.Triggers>
+        <Trigger Property="Tag" Value="{x:Static vm:ConnectionState.Busy}">
+          <Setter Property="Background" Value="{DynamicResource Nexus.WarningSubtle}" />
+          <Setter Property="TextElement.Foreground" Value="{DynamicResource Nexus.Warning}" />
+        </Trigger>
+        <Trigger Property="Tag" Value="{x:Static vm:ConnectionState.Connecting}">
+          <Setter Property="Background" Value="{DynamicResource Nexus.InfoSubtle}" />
+          <Setter Property="TextElement.Foreground" Value="{DynamicResource Nexus.Info}" />
+        </Trigger>
+        <Trigger Property="Tag" Value="{x:Static vm:ConnectionState.Error}">
+          <Setter Property="Background" Value="{DynamicResource Nexus.DangerSubtle}" />
+          <Setter Property="TextElement.Foreground" Value="{DynamicResource Nexus.Danger}" />
+        </Trigger>
+        <Trigger Property="Tag" Value="{x:Static vm:ConnectionState.Disconnected}">
+          <Setter Property="Background" Value="{DynamicResource Nexus.SurfaceAlt}" />
+          <Setter Property="TextElement.Foreground" Value="{DynamicResource Nexus.TextSecondary}" />
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- A program's last message: red for errors, grey while busy (the hub retries by itself). -->
+    <Style x:Key="AgentError" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource Nexus.Danger}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="FontSize" Value="{StaticResource Nexus.FontSize.Caption}" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding IsBusy}" Value="True">
+          <Setter Property="Foreground" Value="{DynamicResource Nexus.TextSecondary}" />
+        </DataTrigger>
+        <Trigger Property="Text" Value="">
+          <Setter Property="Visibility" Value="Collapsed" />
+        </Trigger>
+        <Trigger Property="Text" Value="{x:Null}">
+          <Setter Property="Visibility" Value="Collapsed" />
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="AgentNote" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource Nexus.Warning}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="FontSize" Value="{StaticResource Nexus.FontSize.Caption}" />
+      <Style.Triggers>
+        <Trigger Property="Text" Value="{x:Null}">
+          <Setter Property="Visibility" Value="Collapsed" />
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- Product icon, or a coloured badge when the icon cannot be read. -->
+    <DataTemplate x:Key="ProductIconTemplate" DataType="{x:Type vm:AgentNode}">
+      <Grid Width="24" Height="24">
+        <Image Source="{Binding ProductIcon}" Width="24" Height="24" RenderOptions.BitmapScalingMode="HighQuality"
+               Visibility="{Binding HasProductIcon, Converter={StaticResource BoolToVis}}" />
+        <Border CornerRadius="5" Visibility="{Binding ShowBadge, Converter={StaticResource BoolToVis}}">
+          <Border.Background>
+            <SolidColorBrush Color="{Binding BadgeColor}" />
+          </Border.Background>
+          <TextBlock Text="{Binding Badge}" Foreground="White" FontWeight="Bold" FontSize="9"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+      </Grid>
+    </DataTemplate>
+
+    <!-- Quick action tile on Home. -->
+    <Style x:Key="Tile" TargetType="Button">
+      <Setter Property="Margin" Value="0,0,12,12" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Foreground" Value="{DynamicResource Nexus.Text}" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bg" Background="{DynamicResource Nexus.Surface}" BorderBrush="{DynamicResource Nexus.Border}" BorderThickness="1"
+                    CornerRadius="{StaticResource Nexus.Radius.Panel}" Padding="16,14">
+              <ContentPresenter />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource Nexus.Accent}" />
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource Nexus.Accent}" />
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- Count on the Health button: red with errors, amber with warnings, blue with suggestions only. -->
+    <Style x:Key="HealthBadge" TargetType="Border">
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="MinWidth" Value="18" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="Padding" Value="5,0" />
+      <Setter Property="Background" Value="{DynamicResource Nexus.Info}" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding Health.HasWarnings}" Value="True">
+          <Setter Property="Background" Value="{DynamicResource Nexus.Warning}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Health.HasErrors}" Value="True">
+          <Setter Property="Background" Value="{DynamicResource Nexus.Danger}" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- Icon for a health check's severity (DataContext has a Severity). -->
+    <Style x:Key="SeverityGlyph" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="Text" Value="&#xE946;" />
+      <Setter Property="Foreground" Value="{DynamicResource Nexus.Info}" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding Severity}" Value="Warning">
+          <Setter Property="Text" Value="&#xE7BA;" />
+          <Setter Property="Foreground" Value="{DynamicResource Nexus.Warning}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Severity}" Value="Error">
+          <Setter Property="Text" Value="&#xEA39;" />
+          <Setter Property="Foreground" Value="{DynamicResource Nexus.Danger}" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+
+    <Style x:Key="NoticeGlyph" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="Text" Value="&#xE946;" />
+      <Setter Property="Foreground" Value="{DynamicResource Nexus.Info}" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding NoticeKind}" Value="Success">
+          <Setter Property="Text" Value="&#xE930;" />
+          <Setter Property="Foreground" Value="{DynamicResource Nexus.Success}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding NoticeKind}" Value="Warning">
+          <Setter Property="Text" Value="&#xE7BA;" />
+          <Setter Property="Foreground" Value="{DynamicResource Nexus.Warning}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding NoticeKind}" Value="Error">
+          <Setter Property="Text" Value="&#xEA39;" />
+          <Setter Property="Foreground" Value="{DynamicResource Nexus.Danger}" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- The menus shared by the rail's Settings button and the command bar's overflow (⋯). -->
+    <ContextMenu x:Key="SettingsMenu">
+      <MenuItem Header="Search/Jump To…" Click="OnPaletteMenu" InputGestureText="Ctrl+K" />
+      <MenuItem Header="Connect Claude (AI assistants)…" Click="OnConnectClaude"
+                ToolTip="Let Claude Desktop and Claude Code work in AutoCAD through Nexus (MCP)" />
+      <MenuItem Header="Theme" SubmenuOpened="OnThemeMenuOpened">
+        <MenuItem Header="Use Windows setting" Tag="System" IsCheckable="True" Click="OnTheme" />
+        <MenuItem Header="Light" Tag="Light" IsCheckable="True" Click="OnTheme" />
+        <MenuItem Header="Dark" Tag="Dark" IsCheckable="True" Click="OnTheme" />
+      </MenuItem>
+      <MenuItem Header="Compact rows" IsCheckable="True" IsChecked="{Binding IsCompact}" />
+      <MenuItem Header="Expanded navigation" IsCheckable="True" IsChecked="{Binding IsRailExpanded}" />
+      <Separator />
+      <MenuItem Header="Messages and log…" Click="OnMessages" />
+      <MenuItem Header="Advanced">
+        <MenuItem Header="How sheet columns are matched in each program…" Command="{Binding OpenSheetFieldsCommand}" />
+        <Separator />
+        <MenuItem Header="Export CSV (one row per item)…" Command="{Binding ExportCsvCommand}" />
+        <MenuItem Header="Export CSV (one row per property)…" Command="{Binding ExportLongCsvCommand}" />
+        <MenuItem Header="Export JSON…" Command="{Binding ExportJsonCommand}" />
+        <Separator />
+        <MenuItem Header="Open log folder" Command="{Binding OpenLogFolderCommand}" />
+      </MenuItem>
+    </ContextMenu>
+  </Window.Resources>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="Auto" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+
+    <!-- ===================== Navigation rail ===================== -->
+    <Border Grid.Column="0" Background="{DynamicResource Nexus.Rail}" BorderBrush="{DynamicResource Nexus.Border}" BorderThickness="0,0,1,0">
+      <Border.Style>
+        <Style TargetType="Border">
+          <Setter Property="Width" Value="{StaticResource Nexus.Rail.Collapsed}" />
+          <Style.Triggers>
+            <!-- Slides open and closed (150 ms). -->
+            <DataTrigger Binding="{Binding IsRailExpanded}" Value="True">
+              <DataTrigger.EnterActions>
+                <BeginStoryboard>
+                  <Storyboard>
+                    <DoubleAnimation Storyboard.TargetProperty="Width" To="{StaticResource Nexus.Rail.Expanded}" Duration="0:0:0.15">
+                      <DoubleAnimation.EasingFunction>
+                        <CubicEase EasingMode="EaseOut" />
+                      </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                  </Storyboard>
+                </BeginStoryboard>
+              </DataTrigger.EnterActions>
+              <DataTrigger.ExitActions>
+                <BeginStoryboard>
+                  <Storyboard>
+                    <DoubleAnimation Storyboard.TargetProperty="Width" To="{StaticResource Nexus.Rail.Collapsed}" Duration="0:0:0.15">
+                      <DoubleAnimation.EasingFunction>
+                        <CubicEase EasingMode="EaseOut" />
+                      </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                  </Storyboard>
+                </BeginStoryboard>
+              </DataTrigger.ExitActions>
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </Border.Style>
+      <DockPanel Margin="0,8,0,8">
+        <!-- Expand / collapse: a square on the icon column, centred in the collapsed rail; stays there when expanded. -->
+        <Button DockPanel.Dock="Top" Style="{StaticResource Nexus.RailToggle}" Click="OnToggleRail"
+                ToolTip="Expand or collapse the menu" AutomationProperties.Name="Menu">
+          <TextBlock Text="&#xE700;" Style="{StaticResource Glyph}" FontSize="16" />
+        </Button>
+
+        <!-- Bottom: search and settings -->
+        <StackPanel DockPanel.Dock="Bottom">
+          <Button Style="{StaticResource Nexus.RailButton}" Click="OnPaletteMenu" ToolTip="Search/Jump To: any sheet, view or command (Ctrl+K)">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE721;" Style="{StaticResource RailGlyph}" />
+              <TextBlock Text="Search/Jump To" Style="{StaticResource RailLabel}" />
+            </StackPanel>
+          </Button>
+          <Button Style="{StaticResource Nexus.RailButton}" Click="OnSettingsMenu" ToolTip="Settings: theme, density, Claude, log">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE713;" Style="{StaticResource RailGlyph}" />
+              <TextBlock Text="Settings" Style="{StaticResource RailLabel}" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel>
+            <RadioButton GroupName="Workspace" Style="{StaticResource Nexus.RailItem}" IsChecked="{Binding IsHome}" ToolTip="Home (Ctrl+1)">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE80F;" Style="{StaticResource RailGlyph}" />
+                <TextBlock Text="Home" Style="{StaticResource RailLabel}" />
+              </StackPanel>
+            </RadioButton>
+            <RadioButton GroupName="Workspace" Style="{StaticResource Nexus.RailItem}" IsChecked="{Binding IsData}" ToolTip="Sheets and data (Ctrl+2)">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE80A;" Style="{StaticResource RailGlyph}" />
+                <TextBlock Text="Sheets &amp; data" Style="{StaticResource RailLabel}" />
+              </StackPanel>
+            </RadioButton>
+            <RadioButton GroupName="Workspace" Style="{StaticResource Nexus.RailItem}" IsChecked="{Binding IsConnections}" ToolTip="Connections: programs, Excel, Claude (Ctrl+3)">
+              <Grid>
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE703;" Style="{StaticResource RailGlyph}" />
+                  <TextBlock Text="Connections" Style="{StaticResource RailLabel}" />
+                </StackPanel>
+                <!-- Dot on the icon: the connections' overall state -->
+                <Ellipse Style="{StaticResource StateDot}" Tag="{Binding OverallConnection}" Width="7" Height="7"
+                         HorizontalAlignment="Left" VerticalAlignment="Top" Margin="15,-2,0,0" />
+              </Grid>
+            </RadioButton>
+
+            <Rectangle Height="1" Margin="16,10" Fill="{DynamicResource Nexus.Border}" />
+            <TextBlock Text="TOOLS" Style="{StaticResource Nexus.Text.Overline}" Margin="20,0,0,4"
+                       Visibility="{Binding IsRailExpanded, Converter={StaticResource BoolToVis}}" />
+
+            <Button Style="{StaticResource Nexus.RailButton}" Click="OnPrint" ToolTip="Print &amp; PDF: PDFs of the selected sheets (or every sheet shown), with a preview and printing">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE749;" Style="{StaticResource RailGlyph}" />
+                <TextBlock Text="Print &amp; PDF" Style="{StaticResource RailLabel}" />
+              </StackPanel>
+            </Button>
+            <Button Style="{StaticResource Nexus.RailButton}" Click="OnMarkups" ToolTip="Markups: the comments made in Bluebeam on the PDFs, by sheet">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE70F;" Style="{StaticResource RailGlyph}" />
+                <TextBlock Text="Markups" Style="{StaticResource RailLabel}" />
+              </StackPanel>
+            </Button>
+            <Button Style="{StaticResource Nexus.RailButton}" Click="OnRename" ToolTip="Rename &amp; Renumber the selected sheets (or every sheet shown)">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE8AC;" Style="{StaticResource RailGlyph}" />
+                <TextBlock Text="Rename &amp; Renumber" Style="{StaticResource RailLabel}" />
+              </StackPanel>
+            </Button>
+            <Button Style="{StaticResource Nexus.RailButton}" Command="{Binding SheetIndexCommand}" ToolTip="Sheet index: keep the Revit dummy sheets for CAD drawings matched to their DWGs">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE8A5;" Style="{StaticResource RailGlyph}" />
+                <TextBlock Text="Sheet index" Style="{StaticResource RailLabel}" />
+              </StackPanel>
+            </Button>
+            <Button Style="{StaticResource Nexus.RailButton}" Click="OnHistory" ToolTip="History: snapshots and every change applied with Nexus">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE81C;" Style="{StaticResource RailGlyph}" />
+                <TextBlock Text="History" Style="{StaticResource RailLabel}" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <!-- ===================== Home ===================== -->
+    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                  Visibility="{Binding IsHome, Converter={StaticResource BoolToVis}}">
+      <StackPanel MaxWidth="920" Margin="32,28,32,24">
+        <TextBlock Text="Home" Style="{StaticResource Nexus.Text.Heading}" />
+        <TextBlock Text="{Binding ConnectionSummary}" Style="{StaticResource Nexus.Text.Secondary}" Margin="0,4,0,24" />
+
+        <!-- Pending changes come first: they are not in the files yet. -->
+        <Border Style="{StaticResource Nexus.Card}" Background="{DynamicResource Nexus.WarningSubtle}" Padding="16,12" Margin="0,0,0,24"
+                Visibility="{Binding HasPendingEdits, Converter={StaticResource BoolToVis}}">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+              <Button Content="Discard" Command="{Binding DiscardChangesCommand}" Style="{StaticResource Nexus.SecondaryButton}" Margin="0,0,8,0" />
+              <Button Content="Review &amp; apply" Command="{Binding ApplyChangesCommand}" Style="{StaticResource Nexus.PrimaryButton}" />
+            </StackPanel>
+            <TextBlock Text="&#xE70F;" Style="{StaticResource Glyph}" Foreground="{DynamicResource Nexus.Warning}" Margin="0,0,12,0" />
+            <TextBlock Text="{Binding PendingText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+          </DockPanel>
+        </Border>
+
+        <!-- Nothing connected yet: how to start -->
+        <Border Style="{StaticResource Nexus.Card}" Padding="20,16" Margin="0,0,0,24"
+                Visibility="{Binding NoPrograms, Converter={StaticResource BoolToVis}}">
+          <StackPanel>
+            <TextBlock Text="Get started" Style="{StaticResource Nexus.Text.Section}" Margin="0,0,0,12" />
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+              <Border Width="24" Height="24" CornerRadius="12" Background="{DynamicResource Nexus.Accent}">
+                <TextBlock Text="1" Foreground="{DynamicResource Nexus.OnAccent}" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="560"
+                         Text="Open a model or drawing in Revit, AutoCAD, Civil 3D or Plant 3D." />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+              <Border Width="24" Height="24" CornerRadius="12" Background="{DynamicResource Nexus.Accent}">
+                <TextBlock Text="2" Foreground="{DynamicResource Nexus.OnAccent}" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="560"
+                         Text="It appears under Connections and in Sheets &amp; data within a few seconds. Tick the files to work with." />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+              <Border Width="24" Height="24" CornerRadius="12" Background="{DynamicResource Nexus.Accent}">
+                <TextBlock Text="3" Foreground="{DynamicResource Nexus.OnAccent}" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="560"
+                         Text="Pick what to see: Sheets, Revisions, Fabrication Parts…" />
+            </StackPanel>
+            <TextBlock Text="Don't see your program? Make sure its Nexus add-in is loaded (Nexus tab on its ribbon)." Style="{StaticResource Nexus.Text.Caption}"
+                       TextWrapping="Wrap" Margin="0,14,0,0" />
+          </StackPanel>
+        </Border>
+
+        <TextBlock Text="QUICK ACTIONS" Style="{StaticResource Nexus.Text.Overline}" Margin="0,0,0,8" />
+        <UniformGrid Columns="3" Margin="0,0,-12,12">
+          <Button Style="{StaticResource Tile}" Click="OnGoData">
+            <StackPanel>
+              <TextBlock Text="&#xE80A;" Style="{StaticResource Glyph}" FontSize="20" Foreground="{DynamicResource Nexus.Accent}" HorizontalAlignment="Left" />
+              <TextBlock Text="Sheets &amp; data" FontWeight="SemiBold" Margin="0,10,0,2" />
+              <TextBlock Text="See and edit sheets across the open files" Style="{StaticResource Nexus.Text.Caption}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Button>
+          <Button Style="{StaticResource Tile}" Click="OnPrint">
+            <StackPanel>
+              <TextBlock Text="&#xE749;" Style="{StaticResource Glyph}" FontSize="20" Foreground="{DynamicResource Nexus.Accent}" HorizontalAlignment="Left" />
+              <TextBlock Text="Print &amp; PDF" FontWeight="SemiBold" Margin="0,10,0,2" />
+              <TextBlock Text="PDF sets with a preview, and printing" Style="{StaticResource Nexus.Text.Caption}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Button>
+          <Button Style="{StaticResource Tile}" Click="OnMarkups">
+            <StackPanel>
+              <TextBlock Text="&#xE70F;" Style="{StaticResource Glyph}" FontSize="20" Foreground="{DynamicResource Nexus.Accent}" HorizontalAlignment="Left" />
+              <TextBlock Text="Markups" FontWeight="SemiBold" Margin="0,10,0,2" />
+              <TextBlock Text="Bluebeam comments on the PDFs, by sheet" Style="{StaticResource Nexus.Text.Caption}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Button>
+          <Button Style="{StaticResource Tile}" Command="{Binding CompareExcelCommand}">
+            <StackPanel>
+              <TextBlock Text="&#xE9F9;" Style="{StaticResource Glyph}" FontSize="20" Foreground="{DynamicResource Nexus.Accent}" HorizontalAlignment="Left" />
+              <TextBlock Text="Compare with deliverables" FontWeight="SemiBold" Margin="0,10,0,2" />
+              <TextBlock Text="The Excel list next to the model" Style="{StaticResource Nexus.Text.Caption}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Button>
+          <Button Style="{StaticResource Tile}" Click="OnHistory">
+            <StackPanel>
+              <TextBlock Text="&#xE81C;" Style="{StaticResource Glyph}" FontSize="20" Foreground="{DynamicResource Nexus.Accent}" HorizontalAlignment="Left" />
+              <TextBlock Text="History" FontWeight="SemiBold" Margin="0,10,0,2" />
+              <TextBlock Text="What changed since an issue" Style="{StaticResource Nexus.Text.Caption}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Button>
+          <Button Style="{StaticResource Tile}" Click="OnPaletteMenu">
+            <StackPanel>
+              <TextBlock Text="&#xE721;" Style="{StaticResource Glyph}" FontSize="20" Foreground="{DynamicResource Nexus.Accent}" HorizontalAlignment="Left" />
+              <TextBlock Text="Search/Jump To" FontWeight="SemiBold" Margin="0,10,0,2" />
+              <TextBlock Text="Any sheet, view or command (Ctrl+K)" Style="{StaticResource Nexus.Text.Caption}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Button>
+        </UniformGrid>
+
+        <DockPanel Margin="0,0,0,8" Visibility="{Binding HasPrograms, Converter={StaticResource BoolToVis}}">
+          <Button DockPanel.Dock="Right" Style="{StaticResource Nexus.CommandButton}" Click="OnShowConnections" Padding="8,2">
+            <TextBlock Text="All connections" Foreground="{DynamicResource Nexus.Accent}" />
+          </Button>
+          <TextBlock Text="PROGRAMS" Style="{StaticResource Nexus.Text.Overline}" Margin="0" VerticalAlignment="Center" />
+        </DockPanel>
+        <ItemsControl ItemsSource="{Binding Agents}" Visibility="{Binding HasPrograms, Converter={StaticResource BoolToVis}}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="{x:Type vm:AgentNode}">
+              <Border Style="{StaticResource Nexus.Card}" Padding="14,10" Margin="0,0,0,8">
+                <DockPanel>
+                  <Border DockPanel.Dock="Right" Style="{StaticResource StateChip}" Tag="{Binding State}">
+                    <TextBlock Text="{Binding StateText}" FontSize="{StaticResource Nexus.FontSize.Caption}" FontWeight="SemiBold" />
+                  </Border>
+                  <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource ProductIconTemplate}" VerticalAlignment="Center" />
+                  <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Nexus.Text.Caption}" />
+                  </StackPanel>
+                </DockPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- ===================== Connections ===================== -->
+    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                  Visibility="{Binding IsConnections, Converter={StaticResource BoolToVis}}">
+      <StackPanel MaxWidth="920" Margin="32,28,32,24">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Command="{Binding RefreshCommand}" Style="{StaticResource Nexus.SecondaryButton}" VerticalAlignment="Top"
+                  ToolTip="Look for programs again and read their files (F5)">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE72C;" Style="{StaticResource Glyph}" FontSize="13" />
+              <TextBlock Text="Check again" Margin="8,0,0,0" />
+            </StackPanel>
+          </Button>
+          <StackPanel>
+            <TextBlock Text="Connections" Style="{StaticResource Nexus.Text.Heading}" />
+            <TextBlock Text="Programs running with the Nexus add-in, and the data Nexus links to." Style="{StaticResource Nexus.Text.Secondary}" Margin="0,4,0,0" />
+          </StackPanel>
+        </DockPanel>
+
+        <TextBlock Text="PROGRAMS" Style="{StaticResource Nexus.Text.Overline}" Margin="0,24,0,8" />
+        <Border Style="{StaticResource Nexus.Card}" Padding="20,16" Visibility="{Binding NoPrograms, Converter={StaticResource BoolToVis}}">
+          <DockPanel>
+            <Ellipse DockPanel.Dock="Left" Style="{StaticResource StateDot}" Tag="{x:Static vm:ConnectionState.Disconnected}" Margin="0,0,12,0" />
+            <StackPanel>
+              <TextBlock Text="No programs connected" FontWeight="SemiBold" />
+              <TextBlock Text="Open Revit, AutoCAD, Civil 3D or Plant 3D with the Nexus add-in. Nexus finds them by itself within a few seconds."
+                         Style="{StaticResource Nexus.Text.Secondary}" Margin="0,2,0,0" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <ItemsControl ItemsSource="{Binding Agents}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="{x:Type vm:AgentNode}">
+              <Border Style="{StaticResource Nexus.Card}" Padding="16,14" Margin="0,0,0,12">
+                <StackPanel>
+                  <DockPanel>
+                    <Border DockPanel.Dock="Right" Style="{StaticResource StateChip}" Tag="{Binding State}" VerticalAlignment="Top">
+                      <StackPanel Orientation="Horizontal">
+                        <Ellipse Style="{StaticResource StateDot}" Tag="{Binding State}" Width="6" Height="6" Margin="0,0,6,0" />
+                        <TextBlock Text="{Binding StateText}" FontSize="{StaticResource Nexus.FontSize.Caption}" FontWeight="SemiBold" />
+                      </StackPanel>
+                    </Border>
+                    <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource ProductIconTemplate}" VerticalAlignment="Top" Margin="0,2,0,0" />
+                    <StackPanel Margin="12,0,0,0">
+                      <TextBlock Text="{Binding Title}" Style="{StaticResource Nexus.Text.Section}" />
+                      <TextBlock Text="{Binding HostDetails}" Style="{StaticResource Nexus.Text.Caption}" Margin="0,2,0,0" />
+                      <TextBlock Style="{StaticResource Nexus.Text.Caption}" Margin="0,2,0,0">
+                        <Run Text="Can:" /> <Run Text="{Binding Capabilities, Mode=OneWay}" />
+                      </TextBlock>
+                    </StackPanel>
+                  </DockPanel>
+                  <TextBlock Text="{Binding Error}" Style="{StaticResource AgentError}" Margin="36,8,0,0" />
+                  <TextBlock Text="{Binding EditNote}" Style="{StaticResource AgentNote}" Margin="36,4,0,0" />
+                  <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Nexus.Text.Caption}" FontWeight="SemiBold" Margin="36,12,0,4" />
+                  <ItemsControl ItemsSource="{Binding Documents}" Margin="36,0,0,0">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="{x:Type vm:DocumentNode}">
+                        <CheckBox IsChecked="{Binding IsChecked}" ToolTip="{Binding ToolTip}" Margin="0,2" MinHeight="0">
+                          <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Flags}" Style="{StaticResource Nexus.Text.Caption}" Margin="10,0,0,0" VerticalAlignment="Center" />
+                          </StackPanel>
+                        </CheckBox>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Text="DATA CONNECTIONS" Style="{StaticResource Nexus.Text.Overline}" Margin="0,16,0,8" />
+        <!-- Excel: the deliverables workbook (moved here from the old sidebar card) -->
+        <Border Style="{StaticResource Nexus.Card}" Padding="16,14" Margin="0,0,0,12">
+          <DockPanel>
+            <Border DockPanel.Dock="Left" Background="#107C41" CornerRadius="5" Width="24" Height="24" VerticalAlignment="Top" Margin="0,2,12,0">
+              <TextBlock Text="X" Foreground="White" FontWeight="Bold" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel>
+              <DockPanel>
+                <Border DockPanel.Dock="Right" Style="{StaticResource Nexus.Chip}">
+                  <TextBlock FontSize="{StaticResource Nexus.FontSize.Caption}" FontWeight="SemiBold">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Text" Value="Not linked" />
+                        <Setter Property="Foreground" Value="{DynamicResource Nexus.TextSecondary}" />
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding HasExcelLink}" Value="True">
+                            <Setter Property="Text" Value="Linked" />
+                            <Setter Property="Foreground" Value="{DynamicResource Nexus.Success}" />
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                </Border>
+                <TextBlock Text="Deliverables workbook (Excel)" Style="{StaticResource Nexus.Text.Section}" />
+              </DockPanel>
+              <TextBlock Text="{Binding ExcelLinkTitle}" Margin="0,4,0,0" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding WorkbookPath}" Style="{StaticResource Nexus.Text.Caption}" TextTrimming="CharacterEllipsis" ToolTip="{Binding WorkbookPath}" />
+              <TextBlock Text="{Binding ExcelState}" Style="{StaticResource Nexus.Text.Caption}" Margin="0,2,0,0"
+                         Visibility="{Binding HasExcelLink, Converter={StaticResource BoolToVis}}" />
+              <TextBlock Text="The workbook is the source of truth: Nexus only writes its Model Export tab." Style="{StaticResource Nexus.Text.Caption}"
+                         Margin="0,6,0,10" TextWrapping="Wrap" />
+              <WrapPanel>
+                <Button Command="{Binding CompareExcelCommand}" Style="{StaticResource Nexus.PrimaryButton}" Margin="0,0,8,8"
+                        Content="Compare" ToolTip="The deliverables list next to the model, with the differences." />
+                <Button Command="{Binding UpdateExcelCommand}" Style="{StaticResource Nexus.SecondaryButton}" Margin="0,0,8,8"
+                        Content="Export to Model" ToolTip="Fill the workbook's Model Export tab with the model's sheets. Nothing else in the workbook is written."
+                        Visibility="{Binding HasExcelLink, Converter={StaticResource BoolToVis}}" />
+                <Button Command="{Binding LinkExcelCommand}" Style="{StaticResource Nexus.SecondaryButton}" Margin="0,0,8,8"
+                        Content="Choose…" ToolTip="Choose the workbook, or switch to another one." />
+                <Button Command="{Binding ClearWorkbookCommand}" Style="{StaticResource Nexus.SecondaryButton}" Margin="0,0,8,8"
+                        Content="Clear" ToolTip="Stop using this workbook. The file itself is not changed."
+                        Visibility="{Binding HasExcelLink, Converter={StaticResource BoolToVis}}" />
+              </WrapPanel>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+
+        <!-- Claude (MCP) -->
+        <Border Style="{StaticResource Nexus.Card}" Padding="16,14" Margin="0,0,0,12">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Left" Text="&#xE8F2;" Style="{StaticResource Glyph}" FontSize="20" Width="24" VerticalAlignment="Top"
+                       Foreground="{DynamicResource Nexus.Accent}" Margin="0,2,12,0" />
+            <Button DockPanel.Dock="Right" Content="Connect…" Click="OnConnectClaude" Style="{StaticResource Nexus.SecondaryButton}" VerticalAlignment="Top" />
+            <StackPanel>
+              <TextBlock Text="AI assistants (Claude)" Style="{StaticResource Nexus.Text.Section}" />
+              <TextBlock Text="Let Claude Desktop and Claude Code work in AutoCAD, Civil 3D and Plant 3D through Nexus."
+                         Style="{StaticResource Nexus.Text.Caption}" TextWrapping="Wrap" Margin="0,2,12,0" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+
+        <!-- Bluebeam -->
+        <Border Style="{StaticResource Nexus.Card}" Padding="16,14" Margin="0,0,0,12">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Left" Text="&#xE70F;" Style="{StaticResource Glyph}" FontSize="20" Width="24" VerticalAlignment="Top"
+                       Foreground="{DynamicResource Nexus.Accent}" Margin="0,2,12,0" />
+            <Button DockPanel.Dock="Right" Content="Open markups" Click="OnMarkups" Style="{StaticResource Nexus.SecondaryButton}" VerticalAlignment="Top" />
+            <StackPanel>
+              <TextBlock Text="Bluebeam markups" Style="{StaticResource Nexus.Text.Section}" />
+              <TextBlock Text="Reads the comments in Bluebeam PDF sets, by sheet. The PDFs are only read."
+                         Style="{StaticResource Nexus.Text.Caption}" TextWrapping="Wrap" Margin="0,2,12,0" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- ===================== Sheets & data ===================== -->
+    <Grid Grid.Column="1" Visibility="{Binding IsData, Converter={StaticResource BoolToVis}}">
+      <Grid.ColumnDefinitions>
+        <!-- Resizable; zero wide while no program is connected (set in code). -->
+        <ColumnDefinition x:Name="ExplorerColumn" Width="256" MinWidth="200" MaxWidth="420" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <!-- Explorer: sources (programs and their files) and views -->
+      <Border x:Name="Explorer" Grid.Column="0" Background="{DynamicResource Nexus.Background}"
+              Visibility="{Binding HasPrograms, Converter={StaticResource BoolToVis}}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="0,4,0,12">
+            <TextBlock Text="SOURCES" Style="{StaticResource Nexus.Text.Overline}" />
+            <ItemsControl ItemsSource="{Binding Agents}" Margin="8,0,8,0">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:AgentNode}">
+                  <StackPanel Margin="0,0,0,10">
+                    <DockPanel Margin="4,2,4,4">
+                      <Ellipse DockPanel.Dock="Right" Style="{StaticResource StateDot}" Tag="{Binding State}" ToolTip="{Binding StateText}" />
+                      <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource ProductIconTemplate}" VerticalAlignment="Center" />
+                      <StackPanel Margin="10,0,8,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Nexus.Text.Caption}" />
+                      </StackPanel>
+                    </DockPanel>
+                    <TextBlock Text="{Binding Error}" Style="{StaticResource AgentError}" Margin="38,0,6,4" />
+                    <TextBlock Text="{Binding EditNote}" Style="{StaticResource AgentNote}" Margin="38,0,6,4" />
+                    <ItemsControl ItemsSource="{Binding Documents}" Margin="34,0,0,0">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:DocumentNode}">
+                          <CheckBox IsChecked="{Binding IsChecked}" ToolTip="{Binding ToolTip}" Margin="0,2" MinHeight="0">
+                            <StackPanel>
+                              <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" MaxWidth="180" />
+                              <TextBlock Text="{Binding Flags}" Style="{StaticResource Nexus.Text.Caption}" />
+                            </StackPanel>
+                          </CheckBox>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Text="VIEWS" Style="{StaticResource Nexus.Text.Overline}" />
+            <ListBox ItemsSource="{Binding Source={StaticResource DatasetsView}}" SelectedItem="{Binding SelectedDataset}"
+                     ItemContainerStyle="{StaticResource Nexus.NavItem}" Background="Transparent" BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" PreviewMouseWheel="OnNestedScroll">
+              <ListBox.GroupStyle>
+                <GroupStyle>
+                  <GroupStyle.HeaderTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding Name}" FontSize="{StaticResource Nexus.FontSize.Caption}" Foreground="{DynamicResource Nexus.TextTertiary}" Margin="16,8,0,2">
+                        <TextBlock.Style>
+                          <Style TargetType="TextBlock">
+                            <Style.Triggers>
+                              <DataTrigger Binding="{Binding Name}" Value="AutoCAD">
+                                <Setter Property="ToolTip" Value="Works in AutoCAD, Civil 3D and Plant 3D" />
+                              </DataTrigger>
+                              <DataTrigger Binding="{Binding Name}" Value="Shared">
+                                <Setter Property="ToolTip" Value="Every sheet from every open file: Revit, AutoCAD, Civil 3D and Plant 3D together" />
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </TextBlock.Style>
+                      </TextBlock>
+                    </DataTemplate>
+                  </GroupStyle.HeaderTemplate>
+                </GroupStyle>
+              </ListBox.GroupStyle>
+              <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:DatasetNode}">
+                  <StackPanel Orientation="Horizontal" ToolTip="{Binding Description}">
+                    <TextBlock Text="{Binding Icon}" Style="{StaticResource Glyph}" Width="22" />
+                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center" Margin="6,0,0,0" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
+      <GridSplitter Grid.Column="1" Width="1" Background="{DynamicResource Nexus.Border}" HorizontalAlignment="Stretch"
+                    Visibility="{Binding HasPrograms, Converter={StaticResource BoolToVis}}" />
+
+      <Grid Grid.Column="2" Margin="24,16,24,12">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Nothing connected: the workspace says where to look -->
+        <StackPanel Grid.Row="0" Grid.RowSpan="5" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="480"
+                    Visibility="{Binding NoPrograms, Converter={StaticResource BoolToVis}}">
+          <TextBlock Text="&#xE8A1;" Style="{StaticResource Glyph}" FontSize="40" HorizontalAlignment="Center"
+                     Foreground="{DynamicResource Nexus.TextTertiary}" />
+          <TextBlock Text="Waiting for your programs" Style="{StaticResource Nexus.Text.Section}" HorizontalAlignment="Center" Margin="0,14,0,6" />
+          <TextBlock Text="Open Revit, AutoCAD, Civil 3D or Plant 3D with the Nexus add-in. Their files appear here within a few seconds."
+                     Style="{StaticResource Nexus.Text.Secondary}" TextAlignment="Center" />
+          <Button Content="View connections" Click="OnShowConnections" Style="{StaticResource Nexus.SecondaryButton}" HorizontalAlignment="Center" Margin="0,16,0,0" />
+        </StackPanel>
+
+        <!--
+          Toolbar: one row. Left: the view, Reload, counts, selection. Right: search, then compact icon tools
+          (tooltips name them); only Show in model keeps a label. Narrow: the label goes, then the tools move to ⋯.
+        -->
+        <DockPanel x:Name="CommandBar" Grid.Row="0" Margin="0,0,0,12" MinHeight="40" SizeChanged="OnCommandBarSizeChanged"
+                   Visibility="{Binding HasPrograms, Converter={StaticResource BoolToVis}}">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+            <!-- Search -->
+            <Grid Width="240" Height="32" VerticalAlignment="Center" Margin="12,0,8,0">
+              <TextBox x:Name="SearchBox" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged, Delay=250}" Padding="30,5,8,5"
+                       MinHeight="32" VerticalContentAlignment="Center" AutomationProperties.Name="Search the table" />
+              <TextBlock Text="&#xE721;" Style="{StaticResource Glyph}" FontSize="12" Margin="11,0,0,0" HorizontalAlignment="Left"
+                         Foreground="{DynamicResource Nexus.TextTertiary}" IsHitTestVisible="False" />
+              <TextBlock Text="Search" Margin="31,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                         Foreground="{DynamicResource Nexus.TextTertiary}">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                        <Setter Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+              <TextBlock Text="Ctrl+F" Margin="0,0,10,0" HorizontalAlignment="Right" VerticalAlignment="Center" IsHitTestVisible="False"
+                         FontSize="{StaticResource Nexus.FontSize.Caption}" Foreground="{DynamicResource Nexus.TextTertiary}">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                        <Setter Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+            </Grid>
+
+            <!-- Primary -->
+            <Button Style="{StaticResource Nexus.SecondaryButton}" Command="{Binding ShowInModelCommand}" Padding="10,0" Height="32" Margin="0,0,4,0"
+                    ToolTip="Show in model: open the sheet, or select and zoom to the selected rows, in Revit / AutoCAD / Civil 3D / Plant 3D">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE8A7;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{DynamicResource Nexus.Accent}" />
+                <TextBlock Text="Show in model" Style="{StaticResource CommandLabel}" />
+              </StackPanel>
+            </Button>
+
+            <!-- Tools (to ⋯ when narrow) -->
+            <StackPanel Orientation="Horizontal">
+              <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding HideSecondary, ElementName=Root}" Value="True">
+                      <Setter Property="Visibility" Value="Collapsed" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </StackPanel.Style>
+              <Button Style="{StaticResource Nexus.IconButton}" Click="OnPrint"
+                      ToolTip="Print &amp; PDF: PDFs of the selected sheets (or every sheet shown), with a preview and printing">
+                <TextBlock Text="&#xE749;" Style="{StaticResource Glyph}" />
+              </Button>
+              <Button Style="{StaticResource Nexus.IconButton}" Click="OnRename"
+                      ToolTip="Rename &amp; Renumber the selected sheets (or every sheet shown), with a preview  (Ctrl+R)">
+                <TextBlock Text="&#xE8AC;" Style="{StaticResource Glyph}" />
+              </Button>
+              <Button Style="{StaticResource Nexus.IconButton}" Click="OnMarkups"
+                      ToolTip="Markups: the comments made in Bluebeam on the PDFs, by sheet">
+                <TextBlock Text="&#xE70F;" Style="{StaticResource Glyph}" />
+              </Button>
+              <Button Style="{StaticResource Nexus.IconButton}" Click="OnHistory"
+                      ToolTip="History: what changed since an issue, and every change applied with Nexus">
+                <TextBlock Text="&#xE81C;" Style="{StaticResource Glyph}" />
+              </Button>
+              <ToggleButton Style="{StaticResource Nexus.IconToggle}" IsChecked="{Binding Health.IsOpen}"
+                            Visibility="{Binding Health.IsAvailable, Converter={StaticResource BoolToVis}}"
+                            ToolTip="Sheet health: duplicate numbers, template placeholders, naming, spaces…">
+                <Grid Width="32" Height="32">
+                  <TextBlock Text="&#xE95E;" Style="{StaticResource Glyph}" HorizontalAlignment="Center" />
+                  <Border Style="{StaticResource HealthBadge}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,1,0"
+                          MinWidth="14" Height="14" Padding="3,0" CornerRadius="7"
+                          Visibility="{Binding Health.HasIssues, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="{Binding Health.BadgeText}" FontSize="9" FontWeight="SemiBold" Foreground="White"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <Ellipse Width="6" Height="6" Fill="{DynamicResource Nexus.Success}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6,6,0"
+                           Visibility="{Binding Health.IsHealthy, Converter={StaticResource BoolToVis}}" />
+                </Grid>
+              </ToggleButton>
+            </StackPanel>
+
+            <Rectangle Style="{StaticResource Nexus.Divider}" />
+
+            <!-- Data and view -->
+            <Button Style="{StaticResource Nexus.IconButton}" Click="OnDropDown" Width="44"
+                    ToolTip="Deliverables workbook (Excel): compare, Export to Model, choose">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE9F9;" Style="{StaticResource Glyph}" />
+                <TextBlock Text="&#xE70D;" Style="{StaticResource Glyph}" FontSize="8" Margin="4,0,0,0" Foreground="{DynamicResource Nexus.TextSecondary}" />
+              </StackPanel>
+              <Button.ContextMenu>
+                <ContextMenu>
+                  <MenuItem Header="Compare with the deliverables list…" Command="{Binding CompareExcelCommand}" FontWeight="SemiBold" />
+                  <MenuItem Header="Export to Model" Command="{Binding UpdateExcelCommand}" />
+                  <MenuItem Header="Choose workbook…" Command="{Binding LinkExcelCommand}" />
+                  <MenuItem Header="Clear workbook" Command="{Binding ClearWorkbookCommand}" />
+                  <Separator />
+                  <MenuItem Header="Export this view to Excel…" Command="{Binding ExportExcelCommand}" />
+                </ContextMenu>
+              </Button.ContextMenu>
+            </Button>
+            <Button Style="{StaticResource Nexus.IconButton}" Click="OnColumns" ToolTip="Columns: choose which to show">
+              <TextBlock Text="&#xE71D;" Style="{StaticResource Glyph}" />
+            </Button>
+            <ToggleButton x:Name="OptionsToggle" Style="{StaticResource Nexus.IconToggle}" ToolTip="Options: what this view includes"
+                          Visibility="{Binding HasOptions, Converter={StaticResource BoolToVis}}">
+              <TextBlock Text="&#xE71C;" Style="{StaticResource Glyph}" />
+            </ToggleButton>
+            <Popup IsOpen="{Binding IsChecked, ElementName=OptionsToggle}" PlacementTarget="{Binding ElementName=OptionsToggle}"
+                   Placement="Bottom" StaysOpen="False" AllowsTransparency="True">
+              <Border Style="{StaticResource Nexus.Card}" Width="420" Margin="0,6,10,10" Padding="16">
+                <Border.Effect>
+                  <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.22" Color="{DynamicResource Nexus.ShadowColor}" />
+                </Border.Effect>
+                <StackPanel>
+                  <TextBlock Text="View options" Style="{StaticResource Nexus.Text.Section}" Margin="0,0,0,12" />
+                  <ItemsControl ItemsSource="{Binding DatasetOptions}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="{x:Type vm:ReaderNode}">
+                        <StackPanel Margin="0,0,0,12">
+                          <TextBlock Text="{Binding Title}" Style="{StaticResource Nexus.Text.Overline}" Margin="0,0,0,6" />
+                          <ItemsControl ItemsSource="{Binding Options}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate DataType="{x:Type vm:OptionNode}">
+                                <Grid Margin="0,2">
+                                  <CheckBox Content="{Binding Option.DisplayName}" IsChecked="{Binding BoolValue}" ToolTip="{Binding Option.Description}"
+                                            Visibility="{Binding IsBool, Converter={StaticResource BoolToVis}}" />
+                                  <DockPanel Visibility="{Binding IsText, Converter={StaticResource BoolToVis}}">
+                                    <TextBox DockPanel.Dock="Right" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="130" />
+                                    <TextBlock Text="{Binding Option.DisplayName}" ToolTip="{Binding Option.Description}" TextWrapping="Wrap"
+                                               VerticalAlignment="Center" Margin="0,0,8,0" />
+                                  </DockPanel>
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <Button Content="Reload with these options" Command="{Binding RefreshCommand}" Style="{StaticResource Nexus.PrimaryButton}"
+                          HorizontalAlignment="Right" />
+                </StackPanel>
+              </Border>
+            </Popup>
+            <ToggleButton Style="{StaticResource Nexus.IconToggle}" IsChecked="{Binding IsCompact}" ToolTip="Compact rows (more on screen)">
+              <TextBlock Text="&#xE8FD;" Style="{StaticResource Glyph}" />
+            </ToggleButton>
+            <ToggleButton Style="{StaticResource Nexus.IconToggle}" IsChecked="{Binding ShowDetails}" ToolTip="Inspector: every property of the selected row">
+              <TextBlock Text="&#xE8A0;" Style="{StaticResource Glyph}" />
+            </ToggleButton>
+            <Button Style="{StaticResource Nexus.IconButton}" Click="OnDropDown" ToolTip="More">
+              <TextBlock Text="&#xE712;" Style="{StaticResource Glyph}" />
+              <Button.ContextMenu>
+                <ContextMenu>
+                  <MenuItem Header="Print &amp; PDF…" Click="OnPrint" />
+                  <MenuItem Header="Rename &amp; Renumber…" Click="OnRename" InputGestureText="Ctrl+R" />
+                  <MenuItem Header="Sheet index (dummy sheets)…" Command="{Binding SheetIndexCommand}" />
+                  <MenuItem Header="Markups…" Click="OnMarkups" />
+                  <MenuItem Header="History and snapshots…" Click="OnHistory" />
+                  <MenuItem Header="Sheet health" Click="OnOpenHealth" />
+                  <Separator />
+                  <MenuItem Header="Export this view to Excel…" Command="{Binding ExportExcelCommand}" />
+                  <MenuItem Header="Export CSV (one row per item)…" Command="{Binding ExportCsvCommand}" />
+                  <MenuItem Header="Export JSON…" Command="{Binding ExportJsonCommand}" />
+                  <Separator />
+                  <MenuItem Header="Search/Jump To…" Click="OnPaletteMenu" InputGestureText="Ctrl+K" />
+                  <MenuItem Header="Messages and log…" Click="OnMessages" />
+                </ContextMenu>
+              </Button.ContextMenu>
+            </Button>
+          </StackPanel>
+
+          <!-- The view: title, Reload, counts, selection, problems -->
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="{Binding SelectedDataset.Title}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" MaxWidth="320" />
+            <Button Style="{StaticResource Nexus.IconButton}" Command="{Binding RefreshCommand}" Width="28" Height="28" Margin="6,0,10,0"
+                    ToolTip="Reload: read the data again (F5)">
+              <TextBlock Text="&#xE72C;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{DynamicResource Nexus.TextSecondary}" />
+            </Button>
+            <TextBlock Text="{Binding Summary}" Foreground="{DynamicResource Nexus.TextSecondary}" VerticalAlignment="Center" />
+            <Border Style="{StaticResource Nexus.Chip}" Background="{DynamicResource Nexus.AccentSubtle}" Margin="10,0,0,0"
+                    Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}"
+                    ToolTip="Print, Rename and Show in model act on the selected rows">
+              <TextBlock Text="{Binding SelectionText}" Foreground="{DynamicResource Nexus.Accent}" FontSize="{StaticResource Nexus.FontSize.Small}" FontWeight="SemiBold" />
+            </Border>
+            <Button Style="{StaticResource Nexus.CommandButton}" Click="OnMessages" Padding="6,0" Margin="6,0,0,0" MinHeight="24"
+                    Visibility="{Binding HasIssues, Converter={StaticResource BoolToVis}}" ToolTip="Problems while reading: open the messages">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE7BA;" Style="{StaticResource Glyph}" FontSize="12" Foreground="{DynamicResource Nexus.Warning}" />
+                <TextBlock Text="{Binding IssuesText}" Margin="5,0,0,0" Foreground="{DynamicResource Nexus.Warning}" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </DockPanel>
+
+        <!-- Info bar: problems and results that need no decision (instead of pop-ups) -->
+        <Border Grid.Row="2" CornerRadius="{StaticResource Nexus.Radius.Panel}" Padding="14,10" Margin="0,0,0,12" BorderThickness="1"
+                Visibility="{Binding HasNotice, Converter={StaticResource BoolToVis}}">
+          <Border.Style>
+            <Style TargetType="Border">
+              <Setter Property="Background" Value="{DynamicResource Nexus.InfoSubtle}" />
+              <Setter Property="BorderBrush" Value="{DynamicResource Nexus.InfoSubtle}" />
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding NoticeKind}" Value="Success">
+                  <Setter Property="Background" Value="{DynamicResource Nexus.SuccessSubtle}" />
+                  <Setter Property="BorderBrush" Value="{DynamicResource Nexus.SuccessSubtle}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding NoticeKind}" Value="Warning">
+                  <Setter Property="Background" Value="{DynamicResource Nexus.WarningSubtle}" />
+                  <Setter Property="BorderBrush" Value="{DynamicResource Nexus.WarningSubtle}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding NoticeKind}" Value="Error">
+                  <Setter Property="Background" Value="{DynamicResource Nexus.DangerSubtle}" />
+                  <Setter Property="BorderBrush" Value="{DynamicResource Nexus.DangerSubtle}" />
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </Border.Style>
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Command="{Binding DismissNoticeCommand}" ToolTip="Dismiss" Style="{StaticResource Nexus.IconButton}"
+                    Width="28" Height="28" VerticalAlignment="Top">
+              <TextBlock Text="&#xE711;" Style="{StaticResource Glyph}" FontSize="12" HorizontalAlignment="Center" />
+            </Button>
+            <Button DockPanel.Dock="Right" Command="{Binding NoticeActionCommand}" Content="{Binding NoticeActionText}"
+                    Style="{StaticResource Nexus.SecondaryButton}" VerticalAlignment="Top" Margin="12,0,6,0" Padding="12,4"
+                    Visibility="{Binding HasNoticeAction, Converter={StaticResource BoolToVis}}" />
+            <TextBlock DockPanel.Dock="Left" Style="{StaticResource NoticeGlyph}" Margin="0,1,12,0" VerticalAlignment="Top" />
+            <StackPanel>
+              <TextBlock Text="{Binding NoticeTitle}" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding NoticeText}" TextWrapping="Wrap" Margin="0,2,0,0" MaxHeight="160"
+                         Foreground="{DynamicResource Nexus.TextSecondary}" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+
+        <!-- Table + side panes -->
+        <Grid Grid.Row="3" Visibility="{Binding HasPrograms, Converter={StaticResource BoolToVis}}">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+
+          <Border Style="{StaticResource Nexus.Card}" ClipToBounds="True">
+            <Grid>
+              <DataGrid x:Name="TableGrid" AutoGenerateColumns="False" IsReadOnly="False" CanUserSortColumns="True"
+                        CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="True" CanUserResizeRows="False"
+                        SelectionUnit="CellOrRowHeader" SelectionMode="Extended" ClipboardCopyMode="ExcludeHeader"
+                        EnableRowVirtualization="True" EnableColumnVirtualization="True"
+                        HeadersVisibility="All" RowHeaderWidth="10" GridLinesVisibility="Horizontal" ColumnHeaderHeight="36"
+                        HorizontalGridLinesBrush="{DynamicResource Nexus.Border}"
+                        BorderThickness="0" Background="Transparent" RowBackground="Transparent"
+                        BeginningEdit="OnBeginningEdit" PreviewKeyDown="OnGridKeyDown" SelectedCellsChanged="OnSelectedCellsChanged"
+                        PreviewMouseRightButtonDown="OnGridRightButtonDown" ContextMenuOpening="OnGridContextMenuOpening">
+                <DataGrid.Style>
+                  <!-- Density: comfortable (default) or compact rows. -->
+                  <Style TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}">
+                    <Setter Property="MinRowHeight" Value="36" />
+                    <Setter Property="FontSize" Value="13" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsCompact}" Value="True">
+                        <Setter Property="MinRowHeight" Value="28" />
+                        <Setter Property="FontSize" Value="12" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </DataGrid.Style>
+                <DataGrid.Resources>
+                  <!-- The table look lives in Themes/Tokens.xaml (shared with the deliverables window). The code that builds
+                       the columns derives each column's cell style from the DataGridCell style here. -->
+                  <Style TargetType="DataGridCell" BasedOn="{StaticResource Nexus.GridCell}" />
+                  <Style TargetType="DataGridRow" BasedOn="{StaticResource Nexus.GridRow}" />
+                  <Style TargetType="DataGridRowHeader" BasedOn="{StaticResource Nexus.GridRowHeader}" />
+                  <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource Nexus.GridColumnHeader}" />
+                  <!-- In-cell editor: flat, same size as the text, so editing does not change the row height. -->
+                  <Style x:Key="CellEditor" TargetType="TextBox">
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Margin" Value="-2,0,0,0" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Foreground" Value="{DynamicResource Nexus.Text}" />
+                    <Setter Property="CaretBrush" Value="{DynamicResource Nexus.Text}" />
+                    <Setter Property="SelectionBrush" Value="{DynamicResource Nexus.Accent}" />
+                    <Setter Property="VerticalContentAlignment" Value="Center" />
+                    <Setter Property="MinHeight" Value="0" />
+                  </Style>
+                </DataGrid.Resources>
+                <DataGrid.ContextMenu>
+                  <ContextMenu>
+                    <!-- Filled when the menu opens: one tickable item per revision for the selected sheet(s). -->
+                    <MenuItem x:Name="RevisionsMenu" Header="Revisions" />
+                    <Separator x:Name="RevisionsSeparator" />
+                    <MenuItem Header="Show in model" Command="{Binding ShowInModelCommand}" />
+                    <Separator />
+                    <MenuItem Header="Copy" Command="ApplicationCommands.Copy" InputGestureText="Ctrl+C" />
+                    <MenuItem Header="Paste" Click="OnPaste" InputGestureText="Ctrl+V" />
+                    <MenuItem Header="Set value for selected cells…" Click="OnSetValue" InputGestureText="F2" />
+                    <MenuItem Header="Fill down" Click="OnFillDown" InputGestureText="Ctrl+D" />
+                    <MenuItem Header="Find and replace…" Click="OnFindReplace" InputGestureText="Ctrl+H" />
+                    <MenuItem Header="Rename &amp; Renumber…" Click="OnRename" InputGestureText="Ctrl+R" />
+                    <MenuItem Header="Clear selected cells" Click="OnClear" InputGestureText="Delete" />
+                    <MenuItem Header="Revert selected cells" Click="OnRevert" InputGestureText="Ctrl+Z" />
+                    <Separator />
+                    <MenuItem Header="Inspector" IsCheckable="True" IsChecked="{Binding ShowDetails}" />
+                  </ContextMenu>
+                </DataGrid.ContextMenu>
+              </DataGrid>
+
+              <!-- Loading: reading, nothing to show yet -->
+              <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="420"
+                          Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
+                <ProgressBar IsIndeterminate="True" Width="200" Height="4" />
+                <TextBlock Text="{Binding WorkText}" Style="{StaticResource Nexus.Text.Secondary}" TextAlignment="Center" Margin="0,14,0,0" />
+                <TextBlock Text="Large models can take a moment. You can keep working in the program meanwhile."
+                           Style="{StaticResource Nexus.Text.Caption}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,4,0,0" />
+              </StackPanel>
+
+              <!-- Empty: no files ticked, or nothing of this kind in them -->
+              <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="420"
+                          Visibility="{Binding IsPlainEmpty, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="{Binding EmptyGlyph}" Style="{StaticResource Glyph}" FontSize="40" HorizontalAlignment="Center"
+                           Foreground="{DynamicResource Nexus.TextTertiary}" />
+                <TextBlock Text="{Binding EmptyTitle}" Style="{StaticResource Nexus.Text.Section}" HorizontalAlignment="Center" Margin="0,12,0,4" />
+                <TextBlock Text="{Binding EmptyText}" Style="{StaticResource Nexus.Text.Secondary}" TextAlignment="Center" />
+              </StackPanel>
+
+              <!-- Error: every file failed to read -->
+              <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="480"
+                          Visibility="{Binding IsReadError, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="&#xE783;" Style="{StaticResource Glyph}" FontSize="40" HorizontalAlignment="Center"
+                           Foreground="{DynamicResource Nexus.Danger}" />
+                <TextBlock Text="{Binding EmptyTitle}" Style="{StaticResource Nexus.Text.Section}" HorizontalAlignment="Center" Margin="0,12,0,4" />
+                <TextBlock Text="{Binding EmptyText}" Style="{StaticResource Nexus.Text.Secondary}" TextAlignment="Center" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
+                  <Button Content="Try again" Command="{Binding RefreshCommand}" Style="{StaticResource Nexus.PrimaryButton}" Margin="0,0,8,0" />
+                  <Button Content="Messages" Click="OnMessages" Style="{StaticResource Nexus.SecondaryButton}" />
+                </StackPanel>
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <!-- Sheet health -->
+          <Border Grid.Column="1" Style="{StaticResource Nexus.Card}" Width="{StaticResource Nexus.Inspector.Width}" Margin="12,0,0,0" Padding="16,14"
+                  Visibility="{Binding Health.IsOpen, Converter={StaticResource BoolToVis}}">
+            <DockPanel DataContext="{Binding Health}">
+              <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                <DockPanel>
+                  <Button DockPanel.Dock="Right" Click="OnCloseHealth" ToolTip="Close" Style="{StaticResource Nexus.IconButton}" Width="28" Height="28">
+                    <TextBlock Text="&#xE711;" Style="{StaticResource Glyph}" FontSize="12" HorizontalAlignment="Center" />
+                  </Button>
+                  <TextBlock Text="Sheet health" Style="{StaticResource Nexus.Text.Section}" VerticalAlignment="Center" />
+                </DockPanel>
+                <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,2,0,10"
+                           Foreground="{DynamicResource Nexus.TextSecondary}" />
+                <StackPanel Visibility="{Binding HasFixes, Converter={StaticResource BoolToVis}}">
+                  <Button Command="{Binding FixAllCommand}" Style="{StaticResource Nexus.PrimaryButton}" HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="&#xE90F;" Style="{StaticResource Glyph}" FontSize="13" />
+                      <TextBlock Text="{Binding FixAllText}" Margin="8,0,0,0" />
+                    </StackPanel>
+                  </Button>
+                  <TextBlock Text="Fixes are added to your pending changes, like your own edits. Nothing changes in the files until Review &amp; apply."
+                             Style="{StaticResource Nexus.Text.Caption}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                </StackPanel>
+              </StackPanel>
+
+              <Grid>
+                <!-- All good -->
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,40"
+                            Visibility="{Binding IsHealthy, Converter={StaticResource BoolToVis}}">
+                  <TextBlock Text="&#xE930;" Style="{StaticResource Glyph}" FontSize="44" HorizontalAlignment="Center"
+                             Foreground="{DynamicResource Nexus.Success}" />
+                  <TextBlock Text="Looking good" Style="{StaticResource Nexus.Text.Section}" HorizontalAlignment="Center" Margin="0,10,0,2" />
+                  <TextBlock Text="No duplicate numbers, placeholders or naming problems." TextWrapping="Wrap" TextAlignment="Center"
+                             Foreground="{DynamicResource Nexus.TextSecondary}" />
+                </StackPanel>
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                  <ItemsControl ItemsSource="{Binding Groups}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="{x:Type vm:HealthGroup}">
+                        <Expander IsExpanded="{Binding IsExpanded}" Margin="0,0,0,6">
+                          <Expander.Header>
+                            <DockPanel LastChildFill="True">
+                              <Button DockPanel.Dock="Right" Content="{Binding FixAllText}" Command="{Binding FixAllCommand}" Padding="8,2" FontSize="12"
+                                      Visibility="{Binding CanFixAll, Converter={StaticResource BoolToVis}}" Margin="8,0,0,0" />
+                              <TextBlock Style="{StaticResource SeverityGlyph}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                              <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                <Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold" />
+                                <Run Text="{Binding Count, Mode=OneWay, StringFormat='  {0}'}" Foreground="{DynamicResource Nexus.TextTertiary}" />
+                              </TextBlock>
+                            </DockPanel>
+                          </Expander.Header>
+                          <ItemsControl ItemsSource="{Binding Items}" Margin="0,2,0,2">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate DataType="{x:Type vm:HealthItem}">
+                                <Border CornerRadius="{StaticResource Nexus.Radius.Control}" Padding="10,8" Margin="0,2" Background="{DynamicResource Nexus.SurfaceAlt}">
+                                  <StackPanel>
+                                    <Button Command="{Binding ShowCommand}" Background="Transparent" BorderThickness="0" Padding="0"
+                                            HorizontalContentAlignment="Stretch" Cursor="Hand" ToolTip="Show this sheet in the table">
+                                      <StackPanel>
+                                        <TextBlock Text="{Binding Where}" FontWeight="SemiBold" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Margin="0,2,0,0"
+                                                   Foreground="{DynamicResource Nexus.TextSecondary}" />
+                                      </StackPanel>
+                                    </Button>
+                                    <Button Content="{Binding FixText}" Command="{Binding FixCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"
+                                            Padding="10,3" FontSize="12" Visibility="{Binding CanFix, Converter={StaticResource BoolToVis}}" />
+                                  </StackPanel>
+                                </Border>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </Expander>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </Grid>
+            </DockPanel>
+          </Border>
+
+          <!-- Inspector: every property of the selected row (collapsed unless opened or pinned) -->
+          <Border Grid.Column="1" Style="{StaticResource Nexus.Card}" Width="{StaticResource Nexus.Inspector.Width}" Margin="12,0,0,0" Padding="16,14"
+                  Visibility="{Binding ShowDetails, Converter={StaticResource BoolToVis}}">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                <DockPanel>
+                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                    <ToggleButton IsChecked="{Binding IsInspectorPinned}" Style="{StaticResource Nexus.CommandToggle}" Width="28" Height="28" MinHeight="0"
+                                  Padding="0" Margin="0" ToolTip="Pin: keep the inspector open, also next time">
+                      <TextBlock Text="&#xE718;" Style="{StaticResource Glyph}" FontSize="12" HorizontalAlignment="Center" />
+                    </ToggleButton>
+                    <Button Click="OnCloseInspector" ToolTip="Close" Style="{StaticResource Nexus.IconButton}" Width="28" Height="28" Margin="2,0,0,0">
+                      <TextBlock Text="&#xE711;" Style="{StaticResource Glyph}" FontSize="12" HorizontalAlignment="Center" />
+                    </Button>
+                  </StackPanel>
+                  <TextBlock Text="INSPECTOR" Style="{StaticResource Nexus.Text.Overline}" Margin="0,6,0,0" />
+                </DockPanel>
+                <TextBlock Text="{Binding SelectedTitle}" Style="{StaticResource Nexus.Text.Section}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <TextBlock Text="{Binding SelectedSubtitle}" TextWrapping="Wrap" Margin="0,2,0,10"
+                           Foreground="{DynamicResource Nexus.TextSecondary}" />
+                <Button Command="{Binding ShowInModelCommand}" HorizontalAlignment="Left" Style="{StaticResource Nexus.SecondaryButton}" Padding="10,4">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE8A7;" Style="{StaticResource Glyph}" FontSize="13" />
+                    <TextBlock Text="Show in model" Margin="8,0,0,0" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+              <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding DetailGroups}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:DetailGroup}">
+                      <Expander IsExpanded="True" Margin="0,0,0,6">
+                        <Expander.Header>
+                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                        </Expander.Header>
+                        <ItemsControl ItemsSource="{Binding Rows}" Margin="0,4,0,4">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:DetailRow}">
+                              <StackPanel Margin="0,3" ToolTip="{Binding ToolTip}">
+                                <TextBlock Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource Nexus.TextSecondary}"
+                                           TextTrimming="CharacterEllipsis" Margin="0,0,0,2" />
+                                <TextBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsReadOnly}"
+                                         TextWrapping="Wrap" KeyDown="OnDetailKeyDown">
+                                  <TextBox.Style>
+                                    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                      <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsReadOnly}" Value="True">
+                                          <Setter Property="Foreground" Value="{DynamicResource Nexus.TextTertiary}" />
+                                          <Setter Property="Background" Value="Transparent" />
+                                          <Setter Property="BorderThickness" Value="0" />
+                                          <Setter Property="Padding" Value="0,2" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsEdited}" Value="True">
+                                          <Setter Property="Background" Value="{DynamicResource Nexus.WarningSubtle}" />
+                                        </DataTrigger>
+                                      </Style.Triggers>
+                                    </Style>
+                                  </TextBox.Style>
+                                </TextBox>
+                              </StackPanel>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </Expander>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </DockPanel>
+          </Border>
+        </Grid>
+
+        <!-- Pending changes: the one main action of the workspace -->
+        <Border Grid.Row="4" Margin="0,12,0,0" CornerRadius="{StaticResource Nexus.Radius.Panel}" Padding="14,8"
+                Background="{DynamicResource Nexus.WarningSubtle}" BorderBrush="{DynamicResource Nexus.Warning}" BorderThickness="1"
+                Visibility="{Binding HasPendingEdits, Converter={StaticResource BoolToVis}}">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+              <Button Content="Discard" Command="{Binding DiscardChangesCommand}" Style="{StaticResource Nexus.SecondaryButton}" Margin="0,0,8,0" />
+              <Button Content="Review &amp; apply" Command="{Binding ApplyChangesCommand}" Style="{StaticResource Nexus.PrimaryButton}" />
+            </StackPanel>
+            <TextBlock Text="&#xE70F;" Style="{StaticResource Glyph}" Foreground="{DynamicResource Nexus.Warning}" Margin="0,0,10,0" />
+            <TextBlock Text="{Binding PendingText}" VerticalAlignment="Center" FontWeight="SemiBold" />
+            <TextBlock Text="  Nothing changes in the files until you apply." VerticalAlignment="Center"
+                       Foreground="{DynamicResource Nexus.TextSecondary}" TextTrimming="CharacterEllipsis" />
+          </DockPanel>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <!-- ===================== Status bar ===================== -->
+    <Border Grid.Row="1" Grid.ColumnSpan="2" Height="30" Background="{DynamicResource Nexus.Surface}"
+            BorderBrush="{DynamicResource Nexus.Border}" BorderThickness="0,1,0,0">
+      <DockPanel Margin="8,0,12,0">
+        <Button DockPanel.Dock="Left" Style="{StaticResource Nexus.CommandButton}" Click="OnShowConnections" MinHeight="0" Padding="8,2"
+                ToolTip="Connections: programs, Excel, Claude">
+          <StackPanel Orientation="Horizontal">
+            <Ellipse Style="{StaticResource StateDot}" Tag="{Binding OverallConnection}" />
+            <TextBlock Text="{Binding ConnectionSummary}" Margin="8,0,0,0" FontSize="{StaticResource Nexus.FontSize.Small}"
+                       Foreground="{DynamicResource Nexus.TextSecondary}" />
+          </StackPanel>
+        </Button>
+        <Button DockPanel.Dock="Left" Style="{StaticResource Nexus.CommandButton}" Click="OnShowConnections" MinHeight="0" Padding="8,2"
+                ToolTip="{Binding WorkbookPath}" Visibility="{Binding HasExcelLink, Converter={StaticResource BoolToVis}}">
+          <StackPanel Orientation="Horizontal">
+            <Border Background="#107C41" CornerRadius="3" Width="14" Height="14">
+              <TextBlock Text="X" Foreground="White" FontWeight="Bold" FontSize="9" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <TextBlock Text="{Binding ExcelLinkTitle}" Margin="6,0,0,0" FontSize="{StaticResource Nexus.FontSize.Small}"
+                       Foreground="{DynamicResource Nexus.TextSecondary}" MaxWidth="220" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Button>
+
+        <TextBlock DockPanel.Dock="Right" Text="Ctrl+K  Search/Jump To" VerticalAlignment="Center" Margin="12,0,0,0"
+                   FontSize="{StaticResource Nexus.FontSize.Caption}" Foreground="{DynamicResource Nexus.TextTertiary}" />
+        <TextBlock DockPanel.Dock="Right" Text="{Binding SelectionText}" VerticalAlignment="Center" Margin="12,0,0,0"
+                   FontSize="{StaticResource Nexus.FontSize.Small}" Foreground="{DynamicResource Nexus.TextSecondary}"
+                   Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}" />
+
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="12,0,12,0"
+                    Visibility="{Binding IsWorking, Converter={StaticResource BoolToVis}}">
+          <ProgressBar Width="120" Height="4" VerticalAlignment="Center" Minimum="0" Maximum="100"
+                       Value="{Binding WorkProgress, Mode=OneWay}" IsIndeterminate="{Binding WorkIndeterminate, Mode=OneWay}" />
+          <TextBlock Text="{Binding WorkText}" VerticalAlignment="Center" Margin="10,0,6,0" FontSize="{StaticResource Nexus.FontSize.Small}" />
+          <Button Command="{Binding CancelWorkCommand}" Style="{StaticResource Nexus.CommandButton}" MinHeight="0" Padding="6,1">
+            <TextBlock Text="Cancel" Foreground="{DynamicResource Nexus.Accent}" FontSize="{StaticResource Nexus.FontSize.Small}" />
+          </Button>
+        </StackPanel>
+        <TextBlock Text="{Binding Status}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="8,0,0,0"
+                   FontSize="{StaticResource Nexus.FontSize.Small}" Foreground="{DynamicResource Nexus.TextSecondary}" ToolTip="{Binding Status}" />
+      </DockPanel>
+    </Border>
+  </Grid>
+</Window>

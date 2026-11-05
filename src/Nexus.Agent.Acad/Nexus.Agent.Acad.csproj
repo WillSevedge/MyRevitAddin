@@ -1,0 +1,72 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Core AutoCAD-family agent. Loads in every AutoCAD-based product.
+       Must NOT reference any vertical (Civil 3D, ...) API. -->
+  <PropertyGroup>
+    <TargetFramework>$(HostTargetFramework)</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- The AutoCAD 2026 API references the Windows Desktop WindowsBase (WPF); avoids MSB3277. -->
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>Nexus.Agent.Acad</RootNamespace>
+    <AssemblyName>Nexus.Agent.Acad</AssemblyName>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <GenerateRuntimeConfigurationFiles>false</GenerateRuntimeConfigurationFiles>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Avoid Application/Color ambiguity with the AutoCAD API. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+    <!-- UseWPF drops System.IO from the implicit usings (Path clash with WPF shapes, not used here). -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Nexus N ribbon images and the code that adds the status dot (shared with the other add-in). -->
+    <Compile Include="..\Common\RibbonIcons.cs" Link="Common\RibbonIcons.cs" />
+    <EmbeddedResource Include="..\Common\Resources\Nexus-N-*.png" LogicalName="%(Filename)%(Extension)" Link="Common\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Nexus.Agent.Shared\Nexus.Agent.Shared.csproj" />
+    <ProjectReference Include="..\Nexus.Contracts\Nexus.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="modules.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="property-categories.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Import Project="..\..\build\AutoCad.targets" />
+
+  <!-- Deploy the core agent + bundle manifest (Windows only). Skipped while AutoCAD has it loaded. -->
+  <Target Name="NexusDeployAcadBundle" AfterTargets="Build" DependsOnTargets="NexusCheckAcadRunning"
+          Condition="'$(NexusAcadDeploy)' == 'true' and '$(_NexusAcadInUse)' != 'true'">
+    <ItemGroup>
+      <_NexusAcadFiles Include="$(TargetDir)**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_NexusAcadFiles)"
+          DestinationFiles="@(_NexusAcadFiles->'$(AcadBundleContentDir)%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" Retries="0" ContinueOnError="WarnAndContinue" />
+    <!-- Icon shown for the bundle in AutoCAD's App Manager. -->
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\Nexus.Hub\Assets\Nexus.ico" DestinationFolder="$(AcadBundleDir)Contents\Resources\"
+          SkipUnchangedFiles="true" ContinueOnError="WarnAndContinue" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\deploy\autocad\PackageContents.xml" DestinationFolder="$(AcadBundleDir)"
+          SkipUnchangedFiles="true" ContinueOnError="WarnAndContinue" />
+    <Message Importance="high" Text="Nexus: deployed AutoCAD $(HostYear) bundle to $(AcadBundleDir)" />
+  </Target>
+
+  <!-- The project was called AecHub before. Remove that bundle so it does not load alongside this one. -->
+  <PropertyGroup>
+    <LegacyAcadBundleDir>$(UserAppData)\Autodesk\ApplicationPlugins\AecHub.bundle\</LegacyAcadBundleDir>
+  </PropertyGroup>
+  <Target Name="NexusRemoveLegacyAcadBundle" AfterTargets="Build" Condition="'$(OS)' == 'Windows_NT' and '$(DeployToHost)' != 'false' and Exists('$(LegacyAcadBundleDir)')">
+    <RemoveDir Directories="$(LegacyAcadBundleDir)" ContinueOnError="true" />
+    <Message Importance="high" Text="Nexus: removed the old AecHub bundle $(LegacyAcadBundleDir)" />
+  </Target>
+
+  <Target Name="NexusCleanAcadBundle" AfterTargets="Clean" DependsOnTargets="NexusCheckAcadRunning"
+          Condition="'$(NexusAcadDeploy)' == 'true' and '$(_NexusAcadInUse)' != 'true'">
+    <RemoveDir Directories="$(AcadBundleContentDir)" ContinueOnError="true" />
+  </Target>
+</Project>

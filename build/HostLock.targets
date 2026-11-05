@@ -1,0 +1,30 @@
+<Project>
+  <!--
+    Detects add-in files that a running Revit/AutoCAD has loaded (Windows keeps them locked), so the
+    deploy targets can skip the copy and say "close Revit/AutoCAD and build again" once, instead of
+    a list of MSB3021/MSB3231 copy warnings.
+  -->
+  <UsingTask TaskName="NexusFilesInUse" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <InUse ParameterType="System.Boolean" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.IO" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        InUse = false;
+        foreach (var item in Files)
+        {
+            string path = item.ItemSpec;
+            if (!File.Exists(path)) continue;
+            try
+            {
+                using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { }
+            }
+            catch (IOException) { InUse = true; break; }
+            catch (UnauthorizedAccessException) { InUse = true; break; }
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+</Project>

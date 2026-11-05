@@ -1,0 +1,230 @@
+<Window x:Class="Nexus.Hub.SheetIndexWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Nexus.Hub.ViewModels"
+        Title="Sheet index — dummy sheets" Height="780" Width="1400" MinWidth="980" MinHeight="520" WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False" Icon="Assets/Nexus.ico"
+        Background="{DynamicResource Nexus.Background}" Foreground="{DynamicResource Nexus.Text}"
+        FontFamily="{StaticResource Nexus.Font}" FontSize="{StaticResource Nexus.FontSize.Body}">
+  <!--
+    Every open DWG next to its dummy sheet in the Revit model that holds the drawing index. Ticked rows are synced in
+    one transaction: the dummy sheet is created, a placeholder becomes a real sheet (placeholders cannot show
+    revisions), and it gets the drawing's name and revision, "Appears In Sheet List" and the discipline value.
+  -->
+  <Window.Resources>
+    <Style x:Key="Tick" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style x:Key="Cell" TargetType="TextBlock">
+      <Setter Property="Margin" Value="10,6" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+  </Window.Resources>
+
+  <DockPanel Margin="24,20,24,16">
+    <!-- Header -->
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+      <Button DockPanel.Dock="Right" Command="{Binding RefreshCommand}" Style="{StaticResource Nexus.SecondaryButton}" VerticalAlignment="Top"
+              ToolTip="Read the lineup again from the main window's Sheets view">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="&#xE72C;" Style="{StaticResource Glyph}" FontSize="13" />
+          <TextBlock Text="Refresh" Margin="8,0,0,0" />
+        </StackPanel>
+      </Button>
+      <StackPanel>
+        <TextBlock Text="Sheet index" Style="{StaticResource Nexus.Text.Heading}" />
+        <TextBlock Text="{Binding Summary}" Style="{StaticResource Nexus.Text.Secondary}" Margin="0,4,0,0" />
+        <TextBlock Text="CAD drawings appear in the Revit drawing index through dummy sheets. Nexus keeps each dummy sheet matched to its DWG: number, name, revision, sheet list and discipline."
+                   Style="{StaticResource Nexus.Text.Caption}" Margin="0,2,0,0" TextWrapping="Wrap" />
+      </StackPanel>
+    </DockPanel>
+
+    <!-- Options -->
+    <Border DockPanel.Dock="Top" Style="{StaticResource Nexus.Card}" Padding="14,10" Margin="0,0,0,10">
+      <WrapPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,24,0">
+          <TextBlock Text="Index model" VerticalAlignment="Center" Margin="0,0,8,0" Style="{StaticResource Nexus.Text.Secondary}" />
+          <ComboBox ItemsSource="{Binding Targets}" SelectedItem="{Binding Target}" DisplayMemberPath="Title" MinWidth="240"
+                    ToolTip="The Revit model with the G sheets (the drawing index) and the dummy sheets" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,24,0">
+          <TextBlock Text="Discipline parameter" VerticalAlignment="Center" Margin="0,0,8,0" Style="{StaticResource Nexus.Text.Secondary}" />
+          <ComboBox ItemsSource="{Binding Disciplines}" SelectedItem="{Binding Discipline}" MinWidth="200"
+                    ToolTip="The shared text parameter the index schedules sort by. New dummy sheets get the value the model's other sheets with the same number prefix have." />
+        </StackPanel>
+        <CheckBox IsChecked="{Binding NoTitleBlock}" Content="New dummy sheets without a title block" VerticalAlignment="Center"
+                  ToolTip="Dummy sheets are only listed in the index, never printed from Revit" />
+      </WrapPanel>
+    </Border>
+
+    <!-- Filters -->
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button Command="{Binding TickAllCommand}" Style="{StaticResource Nexus.CommandButton}" Content="Tick all" />
+        <Button Command="{Binding TickNoneCommand}" Style="{StaticResource Nexus.CommandButton}" Content="Tick none" />
+      </StackPanel>
+      <WrapPanel VerticalAlignment="Center">
+        <RadioButton GroupName="IndexFilter" Style="{StaticResource Nexus.FilterChip}" IsChecked="{Binding IsToSync}">
+          <TextBlock><Run Text="To sync" /><Run Text="  " /><Run Text="{Binding CountToSync, Mode=OneWay}" FontWeight="SemiBold" /></TextBlock>
+        </RadioButton>
+        <RadioButton GroupName="IndexFilter" Style="{StaticResource Nexus.FilterChip}" IsChecked="{Binding IsSynced}">
+          <TextBlock><Run Text="In sync" /><Run Text="  " /><Run Text="{Binding CountSynced, Mode=OneWay}" FontWeight="SemiBold" /></TextBlock>
+        </RadioButton>
+        <RadioButton GroupName="IndexFilter" Style="{StaticResource Nexus.FilterChip}" IsChecked="{Binding IsAll}">
+          <TextBlock><Run Text="All" /><Run Text="  " /><Run Text="{Binding CountAll, Mode=OneWay}" FontWeight="SemiBold" /></TextBlock>
+        </RadioButton>
+      </WrapPanel>
+    </DockPanel>
+
+    <!-- Action bar -->
+    <Border DockPanel.Dock="Bottom" Style="{StaticResource Nexus.Card}" Padding="16,12" Margin="0,12,0,0">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button Command="{Binding SyncCommand}" Style="{StaticResource Nexus.PrimaryButton}"
+                  ToolTip="Create or update the ticked dummy sheets in the index model (one Undo in Revit)">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE895;" Style="{StaticResource Glyph}" FontSize="13" />
+              <TextBlock Text="{Binding SyncText}" Margin="8,0,0,0" />
+            </StackPanel>
+          </Button>
+          <Button Content="Close" IsCancel="True" Click="OnClose" Style="{StaticResource Nexus.CommandButton}" Margin="8,0,0,0" />
+        </StackPanel>
+        <TextBlock Text="{Binding Message}" Style="{StaticResource Nexus.Text.Secondary}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,16,0" />
+      </DockPanel>
+    </Border>
+
+    <!-- The lineup -->
+    <Border Style="{StaticResource Nexus.Card}" ClipToBounds="True">
+      <Grid>
+        <DataGrid x:Name="Grid" ItemsSource="{Binding View}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{DynamicResource Nexus.Border}"
+                  BorderThickness="0" Background="Transparent" RowBackground="Transparent" ColumnHeaderHeight="36"
+                  EnableRowVirtualization="True" SelectionUnit="FullRow" SelectionMode="Extended" IsReadOnly="True" FrozenColumnCount="2"
+                  KeyDown="OnGridKeyDown">
+          <DataGrid.Resources>
+            <Style TargetType="DataGridCell" BasedOn="{StaticResource Nexus.GridCell}">
+              <Setter Property="Padding" Value="0" />
+            </Style>
+            <Style TargetType="DataGridRow" BasedOn="{StaticResource Nexus.GridRow}" />
+            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource Nexus.GridColumnHeader}" />
+          </DataGrid.Resources>
+          <DataGrid.Columns>
+            <DataGridTemplateColumn Width="44" CanUserResize="False" CanUserSort="False">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate DataType="{x:Type vm:IndexRow}">
+                  <CheckBox IsChecked="{Binding Push, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Tick}"
+                            Visibility="{Binding CanPush, Converter={StaticResource BoolToVis}}" ToolTip="Sync this dummy sheet" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Number" Width="120" SortMemberPath="Number">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate DataType="{x:Type vm:IndexRow}">
+                  <TextBlock Text="{Binding Number}" FontWeight="SemiBold" Style="{StaticResource Cell}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="DWG" Width="1.4*" MinWidth="220" SortMemberPath="DrawingName">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate DataType="{x:Type vm:IndexRow}">
+                  <StackPanel Margin="10,6" VerticalAlignment="Center" ToolTip="{Binding Drawing}">
+                    <TextBlock Text="{Binding DrawingName}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Drawing}" Style="{StaticResource Nexus.Text.Caption}" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="DWG rev" Width="80" SortMemberPath="DrawingRev">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate DataType="{x:Type vm:IndexRow}">
+                  <TextBlock Text="{Binding DrawingRev}" Style="{StaticResource Cell}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Dummy sheet in Revit" Width="1.4*" MinWidth="220" SortMemberPath="SheetName">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate DataType="{x:Type vm:IndexRow}">
+                  <DockPanel Margin="10,6" VerticalAlignment="Center">
+                    <Border DockPanel.Dock="Left" Style="{StaticResource Nexus.Chip}" Margin="0,0,8,0" Padding="6,1">
+                      <TextBlock Text="{Binding SheetKind}" FontSize="{StaticResource Nexus.FontSize.Caption}" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource Nexus.TextSecondary}" />
+                    </Border>
+                    <TextBlock Text="{Binding SheetName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  </DockPanel>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Rev" Width="70" SortMemberPath="SheetRev">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate DataType="{x:Type vm:IndexRow}">
+                  <TextBlock Text="{Binding SheetRev}" Style="{StaticResource Cell}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="In index" Width="80" SortMemberPath="InList">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate DataType="{x:Type vm:IndexRow}">
+                  <TextBlock Text="{Binding InList}" Style="{StaticResource Cell}" ToolTip="Appears In Sheet List" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Discipline" Width="130" SortMemberPath="Discipline">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate DataType="{x:Type vm:IndexRow}">
+                  <TextBlock Text="{Binding Discipline}" Style="{StaticResource Cell}"
+                             ToolTip="The sheet's value; in brackets, the value a new or empty dummy sheet gets" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="What changes" Width="2*" MinWidth="240" SortMemberPath="Changes">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate DataType="{x:Type vm:IndexRow}">
+                  <StackPanel Margin="10,6" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Changes}" TextWrapping="Wrap">
+                      <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                          <Setter Property="Foreground" Value="{DynamicResource Nexus.Text}" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding InSync}" Value="True">
+                              <Setter Property="Foreground" Value="{DynamicResource Nexus.Success}" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="{Binding Result}" TextWrapping="Wrap" Foreground="{DynamicResource Nexus.Accent}">
+                      <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource Nexus.Text.Caption}">
+                          <Style.Triggers>
+                            <Trigger Property="Text" Value="">
+                              <Setter Property="Visibility" Value="Collapsed" />
+                            </Trigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBlock.Style>
+                    </TextBlock>
+                  </StackPanel>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+          </DataGrid.Columns>
+        </DataGrid>
+
+        <ProgressBar IsIndeterminate="True" VerticalAlignment="Top" Height="3"
+                     Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="440"
+                    Visibility="{Binding IsEmptyView, Converter={StaticResource BoolToVis}}">
+          <TextBlock Text="&#xE8A5;" Style="{StaticResource Glyph}" FontSize="36" HorizontalAlignment="Center" Foreground="{DynamicResource Nexus.TextTertiary}" />
+          <TextBlock Text="Nothing to show" Style="{StaticResource Nexus.Text.Section}" HorizontalAlignment="Center" Margin="0,10,0,4" />
+          <TextBlock Text="{Binding Message}" Style="{StaticResource Nexus.Text.Secondary}" TextAlignment="Center" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </DockPanel>
+</Window>

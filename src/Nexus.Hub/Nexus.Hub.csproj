@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The Nexus hub: a standalone background (tray) application, one per Windows user.
+    It is independent of the host add-ins: build it into a self-contained Nexus.exe with
+    build\Publish-Hub.cmd and install it with Install.cmd next to it (see README, Hub section).
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- Windows 10 2004+ APIs: the built-in PDF renderer (sheet preview and printing). -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <!-- For the tray icon (NotifyIcon). -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>Nexus.Hub</RootNamespace>
+    <AssemblyName>Nexus</AssemblyName>
+    <ApplicationIcon>Assets\Nexus.ico</ApplicationIcon>
+    <Product>Nexus</Product>
+    <AssemblyTitle>Nexus hub</AssemblyTitle>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- WPF types (Application, MessageBox, Color...) win; WinForms is only used by name. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Window icon (WPF resource) and tray icon (embedded, loaded at tray size). -->
+    <Resource Include="Assets\Nexus.ico" />
+    <!-- The Nexus N for the window header: dark mark on light themes, light mark on dark themes. -->
+    <Resource Include="Assets\Nexus-dark.png" />
+    <Resource Include="Assets\Nexus-light.png" />
+    <!-- Source for build\make-icons.py; not used at run time. -->
+    <None Include="Assets\Nexus-logo.png" />
+    <EmbeddedResource Include="Assets\Nexus.ico" LogicalName="Nexus.ico" />
+    <EmbeddedResource Include="Assets\Nexus-tray-white.ico" LogicalName="Nexus-tray-white.ico" />
+    <EmbeddedResource Include="Assets\Nexus-tray-black.ico" LogicalName="Nexus-tray-black.ico" />
+    <!-- Shared with the Revit add-in, loaded at run time with XamlReader. -->
+    <EmbeddedResource Include="..\Nexus.Agent.Revit\Rename\BulkRenameWindow.xaml" Link="Rename\BulkRenameWindow.xaml" LogicalName="BulkRenameWindow.xaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Nexus.Hub.Core\Nexus.Hub.Core.csproj" />
+    <!-- Rename & Renumber: the same rules engine and layout as Bulk Rename in Revit (Bulk Rename Utility style). -->
+    <ProjectReference Include="..\Nexus.Rename\Nexus.Rename.csproj" />
+  </ItemGroup>
+
+  <!--
+    Optional: install the hub every time Visual Studio builds it (handy while working on the hub).
+    Off by default so the hub stays a separate program; turn on with /p:InstallHubOnBuild=true
+    or by setting the property here.
+  -->
+  <Target Name="NexusInstallHub" AfterTargets="Build"
+          Condition="'$(OS)' == 'Windows_NT' and '$(InstallHubOnBuild)' == 'true' and '$(_IsPublishing)' != 'true'">
+    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --install --background" ContinueOnError="WarnAndContinue" />
+  </Target>
+</Project>

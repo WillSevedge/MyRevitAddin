@@ -1,0 +1,92 @@
+<Project>
+  <!--
+    Imported by the Revit agent project.
+    - References RevitAPI/RevitAPIUI from the default install path with Private=false.
+      If Revit is not installed on the build machine (e.g. CI), falls back to the
+      compile-only Nice3point reference package. Neither is ever copied to the output.
+    - After Build on Windows, deploys to %APPDATA%\Autodesk\Revit\Addins\{year}\.
+      Set /p:DeployToHost=false to skip.
+  -->
+  <PropertyGroup>
+    <!-- Only a real install (Revit.exe next to the API): a leftover or partly removed Revit folder can hold an API
+         built for another .NET, which does not compile (CS1705). The reference package is used then. -->
+    <UseInstalledRevitApi Condition="Exists('$(RevitInstallDir)RevitAPI.dll') and Exists('$(RevitInstallDir)Revit.exe')">true</UseInstalledRevitApi>
+    <RevitAddinsDir>$(UserAppData)\Autodesk\Revit\Addins\$(HostYear)\</RevitAddinsDir>
+    <RevitAddinFolder>$(RevitAddinsDir)Nexus\</RevitAddinFolder>
+    <!-- Install into this Revit year only when it is on this PC (the build still checks every year compiles). -->
+    <RevitInstalled Condition="Exists('$(RevitInstallDir)Revit.exe') or Exists('$(ProgramData)\Autodesk\Revit\Addins\$(HostYear)')">true</RevitInstalled>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseInstalledRevitApi)' == 'true'">
+    <Reference Include="RevitAPI">
+      <HintPath>$(RevitInstallDir)RevitAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>$(RevitInstallDir)RevitAPIUI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseInstalledRevitApi)' != 'true'">
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitApiPackageVersion)" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitApiPackageVersion)" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <Target Name="NexusRevitApiNotice" BeforeTargets="Build">
+    <Message Importance="high" Condition="'$(UseInstalledRevitApi)' == 'true'" Text="Nexus: Revit $(HostYear) API from $(RevitInstallDir)" />
+    <Warning Condition="'$(UseInstalledRevitApi)' != 'true' and '$(OS)' == 'Windows_NT'"
+             Text="Nexus: Revit $(HostYear) not found at '$(RevitInstallDir)'. Compiling against the reference package instead. Set RevitInstallDir if Revit is installed elsewhere." />
+  </Target>
+
+  <Import Project="HostLock.targets" />
+
+  <!-- A running Revit has the add-in loaded: Windows will not let it be replaced. -->
+  <Target Name="NexusCheckRevitRunning" BeforeTargets="Clean;Build" Condition="'$(OS)' == 'Windows_NT' and '$(DeployToHost)' != 'false' and '$(RevitInstalled)' == 'true'">
+    <NexusFilesInUse Files="$(RevitAddinFolder)$(TargetFileName);$(RevitAddinFolder)Nexus.Contracts.dll;$(RevitAddinFolder)Nexus.Agent.Shared.dll">
+      <Output TaskParameter="InUse" PropertyName="_NexusRevitInUse" />
+    </NexusFilesInUse>
+    <Warning Condition="'$(_NexusRevitInUse)' == 'true'"
+             Text="Nexus: Revit $(HostYear) is open, so the Nexus add-in was NOT updated (Windows locks add-in files while Revit runs). Close Revit, then build again (Build › Rebuild Solution)." />
+  </Target>
+
+  <Target Name="NexusSkipRevit" AfterTargets="Build" Condition="'$(OS)' == 'Windows_NT' and '$(DeployToHost)' != 'false' and '$(RevitInstalled)' != 'true'">
+    <Message Importance="high" Text="Nexus: Revit $(HostYear) is not installed on this PC; the add-in was built but not installed." />
+  </Target>
+
+  <!-- Build-AllYears.cmd: also collect the add-in under artifacts\addins\Revit\{year}\ for other PCs. -->
+  <Target Name="NexusStageRevit" AfterTargets="Build" Condition="'$(NexusStageDir)' != ''">
+    <ItemGroup>
+      <_NexusStageRevitFiles Include="$(TargetDir)**\*.*" Exclude="$(TargetDir)**\*.pdb" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_NexusStageRevitFiles)" DestinationFiles="@(_NexusStageRevitFiles->'$([MSBuild]::EnsureTrailingSlash('$(NexusStageDir)'))Revit\$(HostYear)\Nexus\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\deploy\revit\Nexus.addin" DestinationFolder="$([MSBuild]::EnsureTrailingSlash('$(NexusStageDir)'))Revit\$(HostYear)\" />
+  </Target>
+
+  <Target Name="NexusDeployRevit" AfterTargets="Build" DependsOnTargets="NexusCheckRevitRunning"
+          Condition="'$(OS)' == 'Windows_NT' and '$(DeployToHost)' != 'false' and '$(RevitInstalled)' == 'true'">
+    <ItemGroup Condition="'$(_NexusRevitInUse)' != 'true'">
+      <_NexusRevitFiles Include="$(TargetDir)**\*.*" />
+    </ItemGroup>
+    <Copy Condition="'$(_NexusRevitInUse)' != 'true'" SourceFiles="@(_NexusRevitFiles)"
+          DestinationFiles="@(_NexusRevitFiles->'$(RevitAddinFolder)%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" Retries="0" ContinueOnError="WarnAndContinue" />
+    <Copy Condition="'$(_NexusRevitInUse)' != 'true'" SourceFiles="$(MSBuildThisFileDirectory)..\deploy\revit\Nexus.addin" DestinationFolder="$(RevitAddinsDir)"
+          SkipUnchangedFiles="true" ContinueOnError="WarnAndContinue" />
+    <Message Condition="'$(_NexusRevitInUse)' != 'true'" Importance="high" Text="Nexus: deployed Revit $(HostYear) add-in to $(RevitAddinFolder)" />
+  </Target>
+
+  <!-- The project was called AecHub before. Remove that deployment: it has the same AddInId. -->
+  <Target Name="NexusRemoveLegacyRevit" AfterTargets="Build" Condition="'$(OS)' == 'Windows_NT' and '$(DeployToHost)' != 'false' and Exists('$(RevitAddinsDir)AecHub.addin')">
+    <Delete Files="$(RevitAddinsDir)AecHub.addin" ContinueOnError="true" />
+    <RemoveDir Directories="$(RevitAddinsDir)AecHub\" ContinueOnError="true" />
+    <Message Importance="high" Text="Nexus: removed the old AecHub add-in from $(RevitAddinsDir)" />
+  </Target>
+
+  <!-- Rebuild cleans first: leave the deployed add-in alone while Revit has it loaded. -->
+  <Target Name="NexusCleanRevit" AfterTargets="Clean" DependsOnTargets="NexusCheckRevitRunning"
+          Condition="'$(OS)' == 'Windows_NT' and '$(DeployToHost)' != 'false' and '$(RevitInstalled)' == 'true'">
+    <RemoveDir Condition="'$(_NexusRevitInUse)' != 'true'" Directories="$(RevitAddinFolder)" ContinueOnError="true" />
+    <Delete Condition="'$(_NexusRevitInUse)' != 'true'" Files="$(RevitAddinsDir)Nexus.addin" ContinueOnError="true" />
+  </Target>
+</Project>

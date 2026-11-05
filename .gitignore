@@ -185,6 +185,8 @@ publish/
 # Note: Comment the next line if you want to checkin your web deploy settings,
 # but database connection strings (with potential passwords) will be unencrypted
 *.pubxml
+# ...except the hub's standalone profile (used by Visual Studio > Publish).
+!src/Nexus.Hub/Properties/PublishProfiles/Standalone.pubxml
 *.publishproj
 
 # Microsoft Azure Web App publish settings. Comment the next line if you want to
@@ -361,3 +363,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# ---- Nexus ----
+# Test workbooks contain client financial data: never commit.
+samples/
+/samples/
+*.xlsm

@@ -1,0 +1,109 @@
+<Window x:Class="Nexus.Hub.MarkupsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Nexus.Hub.ViewModels"
+        Title="Nexus - Markups" Height="780" Width="1360" WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False" Icon="Assets/Nexus.ico">
+  <Window.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVis" />
+  </Window.Resources>
+  <DockPanel Margin="20">
+    <!-- The reviewed PDFs -->
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+        <Button Content="Add PDFs…" Command="{Binding AddCommand}" Style="{DynamicResource AccentButtonStyle}"
+                ToolTip="The PDFs reviewed in Bluebeam Revu (a set or single sheets). They are only read." />
+        <Button Content="Remove" Command="{Binding RemoveCommand}" Margin="8,0,0,0" ToolTip="Stop reading the selected PDF (the file is not changed)." />
+        <Button Content="Refresh" Command="{Binding RefreshCommand}" Margin="8,0,0,0" />
+      </StackPanel>
+      <StackPanel>
+        <TextBlock Text="Markups from Bluebeam" FontSize="16" FontWeight="SemiBold" />
+        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,8"
+                   Text="Every markup in the reviewed PDFs, by sheet: what is still open, who asked, and the replies. Each page is matched to its sheet by page label or bookmark (sets made with Print &amp; PDF have both)." />
+        <ListBox ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}" MaxHeight="76" BorderThickness="0"
+                 Visibility="{Binding HasFiles, Converter={StaticResource BoolToVis}}" />
+      </StackPanel>
+    </DockPanel>
+
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <TextBox Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" Width="220" Margin="0,0,12,0" ToolTip="Search sheets, comments, authors, replies" />
+        <TextBlock Text="Show" VerticalAlignment="Center" Margin="0,0,8,0" />
+        <ComboBox ItemsSource="{x:Static vm:MarkupsViewModel.Filters}" SelectedItem="{Binding Filter}" Width="200" />
+      </StackPanel>
+      <TextBlock Text="{Binding Summary}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" />
+    </DockPanel>
+
+    <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+      <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,8" />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+        <Button Content="Show sheet in model" Command="{Binding ShowInModelCommand}"
+                ToolTip="Open the sheets of the selected markups in Revit or AutoCAD." />
+        <Button Content="Open PDF" Command="{Binding OpenPdfCommand}" Margin="8,0,0,0" ToolTip="Open the PDF in Bluebeam (your default PDF program)." />
+        <Button Content="Export to Excel…" Command="{Binding ExportCommand}" Margin="8,0,0,0" ToolTip="The markups shown, as a workbook." />
+        <Button Content="Close" IsCancel="True" Click="OnClose" Margin="8,0,0,0" />
+      </StackPanel>
+    </StackPanel>
+
+    <Grid>
+      <DataGrid x:Name="Grid" ItemsSource="{Binding View}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                SelectionMode="Extended" SelectionUnit="FullRow" VirtualizingPanel.IsVirtualizingWhenGrouping="True"
+                MouseDoubleClick="OnDoubleClick">
+        <DataGrid.GroupStyle>
+          <GroupStyle>
+            <GroupStyle.HeaderTemplate>
+              <DataTemplate>
+                <StackPanel Orientation="Horizontal" Margin="4,10,0,4">
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding ItemCount, StringFormat='   {0} shown'}" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                </StackPanel>
+              </DataTemplate>
+            </GroupStyle.HeaderTemplate>
+          </GroupStyle>
+        </DataGrid.GroupStyle>
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100">
+            <DataGridTextColumn.ElementStyle>
+              <Style TargetType="TextBlock">
+                <Setter Property="Padding" Value="4,2" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsOpen}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}" />
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding IsOpen}" Value="False">
+                    <Setter Property="Background" Value="{DynamicResource SystemFillColorSuccessBackgroundBrush}" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </DataGridTextColumn.ElementStyle>
+          </DataGridTextColumn>
+          <DataGridTextColumn Header="Page" Binding="{Binding Page}" Width="55" />
+          <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="95" />
+          <DataGridTextColumn Header="Subject" Binding="{Binding Subject}" Width="130" />
+          <DataGridTextColumn Header="Comment" Binding="{Binding Comment}" Width="3*">
+            <DataGridTextColumn.ElementStyle>
+              <Style TargetType="TextBlock">
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="ToolTip" Value="{Binding Comment}" />
+              </Style>
+            </DataGridTextColumn.ElementStyle>
+          </DataGridTextColumn>
+          <DataGridTextColumn Header="Author" Binding="{Binding Author}" Width="130" />
+          <DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="130" SortMemberPath="When" />
+          <DataGridTextColumn Header="Replies" Binding="{Binding Replies}" Width="65">
+            <DataGridTextColumn.ElementStyle>
+              <Style TargetType="TextBlock">
+                <Setter Property="ToolTip" Value="{Binding RepliesText}" />
+              </Style>
+            </DataGridTextColumn.ElementStyle>
+          </DataGridTextColumn>
+          <DataGridTextColumn Header="File" Binding="{Binding File}" Width="*" />
+        </DataGrid.Columns>
+      </DataGrid>
+      <ProgressBar IsIndeterminate="True" VerticalAlignment="Top" Height="3"
+                   Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+    </Grid>
+  </DockPanel>
+</Window>

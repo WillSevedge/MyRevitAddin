@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>$(HostTargetFramework)</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- The Revit 2026 API references the Windows Desktop builds of System.Drawing and
+         Microsoft.VisualBasic (WinForms profile). Referencing that profile too avoids
+         MSB3277 version conflicts. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>Nexus.Agent.Revit</RootNamespace>
+    <AssemblyName>Nexus.Agent.Revit</AssemblyName>
+    <!-- Plugin-style output: our own dependencies are copied next to the add-in. -->
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <GenerateRuntimeConfigurationFiles>false</GenerateRuntimeConfigurationFiles>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Keep WinForms/Drawing out of the implicit usings: their Form, Color, Point etc.
+         clash with Revit and WPF types. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Nexus N ribbon images and the code that adds the status dot (shared with the other add-in). -->
+    <Compile Include="..\Common\RibbonIcons.cs" Link="Common\RibbonIcons.cs" />
+    <EmbeddedResource Include="..\Common\Resources\Nexus-N-*.png" LogicalName="%(Filename)%(Extension)" Link="Common\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Bulk Rename layout: loaded at run time with XamlReader (compiled XAML can fail to load in add-ins Revit isolates). -->
+    <Page Remove="Rename\BulkRenameWindow.xaml" />
+    <EmbeddedResource Include="Rename\BulkRenameWindow.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Nexus.Agent.Shared\Nexus.Agent.Shared.csproj" />
+    <ProjectReference Include="..\Nexus.Contracts\Nexus.Contracts.csproj" />
+    <ProjectReference Include="..\Nexus.Rename\Nexus.Rename.csproj" />
+  </ItemGroup>
+
+  <Import Project="..\..\build\Revit.targets" />
+</Project>

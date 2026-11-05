@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Runs inside AutoCAD's Core Console (accoreconsole.exe, AutoCAD without a window), started by the hub's
+    Print & PDF to make PDFs of a drawing's layouts from its saved file (NEXUSJOB command).
+    The Core Console only has AutoCAD's core libraries (accoremgd, acdbmgd): this assembly must never use
+    acmgd, AdWindows, WPF or Windows Forms, or the Core Console refuses to load it. It is self-contained: it
+    references no other Nexus assembly (the few shared types are compiled in), so loading it depends on nothing
+    but AutoCAD. It is listed in the bundle (loaded by the autoloader, a trusted way); the hub NETLOADs it only
+    when the Core Console did not.
+  -->
+  <PropertyGroup>
+    <TargetFramework>$(HostTargetFramework)</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>Nexus.Agent.Acad</RootNamespace>
+    <AssemblyName>Nexus.Agent.Acad.Console</AssemblyName>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <GenerateRuntimeConfigurationFiles>false</GenerateRuntimeConfigurationFiles>
+    <!-- Only accoremgd and acdbmgd (see build\AutoCad.targets). -->
+    <AcadCoreOnly>true</AcadCoreOnly>
+    <!--
+      AutoCAD's core libraries were compiled against the Windows Desktop versions of WindowsBase,
+      System.Drawing and Microsoft.VisualBasic: reference them for compiling (avoids MSB3277). Nothing here
+      uses them, so the built assembly still references only accoremgd and acdbmgd.
+    -->
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Same implicit usings as the main agent: no WPF/Forms namespaces (Application, Path clashes). -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The job and result shapes shared with the hub, compiled in (no Nexus.Contracts.dll needed). -->
+    <Compile Include="..\Nexus.Contracts\FileModels.cs" Link="Shared\FileModels.cs" />
+    <Compile Include="..\Nexus.Contracts\Json.cs" Link="Shared\Json.cs" />
+    <Compile Include="..\Nexus.Contracts\NexusPaths.cs" Link="Shared\NexusPaths.cs" />
+  </ItemGroup>
+
+  <Import Project="..\..\build\AutoCad.targets" />
+
+  <Target Name="NexusDeployConsole" AfterTargets="Build" DependsOnTargets="NexusCheckAcadRunning"
+          Condition="'$(NexusAcadDeploy)' == 'true' and '$(_NexusAcadInUse)' != 'true'">
+    <Copy SourceFiles="$(TargetPath);$(TargetDir)$(TargetName).pdb" DestinationFolder="$(AcadBundleContentDir)"
+          SkipUnchangedFiles="true" Retries="0" ContinueOnError="WarnAndContinue" />
+    <Message Importance="high" Text="Nexus: deployed the Core Console part to $(AcadBundleContentDir)" />
+  </Target>
+</Project>

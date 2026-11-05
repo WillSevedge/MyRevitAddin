@@ -1,0 +1,78 @@
+<Project>
+  <!--
+    Imported by the AutoCAD-family agent projects.
+    - References the AutoCAD .NET API from the default install path with Private=false.
+      Falls back to Autodesk's compile-only AutoCAD.NET package when AutoCAD is
+      not installed on the build machine (e.g. CI). Never copied to the output.
+    - Set IsAcadModule=true (Civil 3D and future vertical modules) to also reference
+      the vertical's API and deploy into the core bundle folder.
+  -->
+  <PropertyGroup>
+    <UseInstalledAutoCadApi Condition="Exists('$(AutoCadInstallDir)accoremgd.dll')">true</UseInstalledAutoCadApi>
+    <AcadBundleDir>$(UserAppData)\Autodesk\ApplicationPlugins\Nexus.bundle\</AcadBundleDir>
+    <AcadBundleContentDir>$(AcadBundleDir)Contents\$(HostYear)\</AcadBundleContentDir>
+    <!-- Install into this year only when AutoCAD (or Civil 3D / Plant 3D, which install into the AutoCAD folder) is on this PC. -->
+    <AutoCadInstalled Condition="Exists('$(AutoCadInstallDir)acad.exe')">true</AutoCadInstalled>
+    <NexusAcadDeploy Condition="'$(OS)' == 'Windows_NT' and '$(DeployToHost)' != 'false' and '$(AutoCadInstalled)' == 'true'">true</NexusAcadDeploy>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>HostYear</_Parameter1>
+      <_Parameter2>$(HostYear)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseInstalledAutoCadApi)' == 'true'">
+    <Reference Include="accoremgd"><HintPath>$(AutoCadInstallDir)accoremgd.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="acdbmgd"><HintPath>$(AutoCadInstallDir)acdbmgd.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+  <!-- User interface libraries: not in AutoCAD's Core Console (AcadCoreOnly projects must not use them). -->
+  <ItemGroup Condition="'$(UseInstalledAutoCadApi)' == 'true' and '$(AcadCoreOnly)' != 'true'">
+    <Reference Include="acmgd"><HintPath>$(AutoCadInstallDir)acmgd.dll</HintPath><Private>false</Private></Reference>
+    <!-- Ribbon (Autodesk.Windows). -->
+    <Reference Include="AdWindows"><HintPath>$(AutoCadInstallDir)AdWindows.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseInstalledAutoCadApi)' != 'true'">
+    <PackageReference Include="AutoCAD.NET" Version="$(AutoCadApiPackageVersion)" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <Import Project="HostLock.targets" />
+
+  <!-- A running AutoCAD / Civil 3D / Plant 3D has the agent loaded: Windows will not let it be replaced. -->
+  <Target Name="NexusCheckAcadRunning" BeforeTargets="Clean;Build" Condition="'$(NexusAcadDeploy)' == 'true'">
+    <NexusFilesInUse Files="$(AcadBundleContentDir)$(TargetFileName);$(AcadBundleContentDir)Nexus.Agent.Acad.dll">
+      <Output TaskParameter="InUse" PropertyName="_NexusAcadInUse" />
+    </NexusFilesInUse>
+    <Warning Condition="'$(_NexusAcadInUse)' == 'true'"
+             Text="Nexus: AutoCAD, Civil 3D or Plant 3D is open, so $(TargetName) was NOT updated in the Nexus bundle (Windows locks add-in files while they run). Close them, then build again (Build › Rebuild Solution)." />
+  </Target>
+
+  <Target Name="NexusSkipAcad" AfterTargets="Build"
+          Condition="'$(OS)' == 'Windows_NT' and '$(DeployToHost)' != 'false' and '$(AutoCadInstalled)' != 'true' and '$(MSBuildProjectName)' == 'Nexus.Agent.Acad'">
+    <Message Importance="high" Text="Nexus: AutoCAD $(HostYear) is not installed on this PC; the add-in was built but not installed." />
+  </Target>
+
+  <!-- Build-AllYears.cmd: also collect everything under artifacts\addins\Nexus.bundle\ for other PCs. -->
+  <Target Name="NexusStageAcad" AfterTargets="Build" Condition="'$(NexusStageDir)' != ''">
+    <PropertyGroup>
+      <_NexusStageBundle>$([MSBuild]::EnsureTrailingSlash('$(NexusStageDir)'))Nexus.bundle\</_NexusStageBundle>
+    </PropertyGroup>
+    <ItemGroup Condition="'$(MSBuildProjectName)' == 'Nexus.Agent.Acad'">
+      <_NexusStageAcadFiles Include="$(TargetDir)**\*.*" Exclude="$(TargetDir)**\*.pdb" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(MSBuildProjectName)' != 'Nexus.Agent.Acad'">
+      <_NexusStageAcadFiles Include="$(TargetPath)" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_NexusStageAcadFiles)" DestinationFiles="@(_NexusStageAcadFiles->'$(_NexusStageBundle)Contents\$(HostYear)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy Condition="'$(MSBuildProjectName)' == 'Nexus.Agent.Acad'" SourceFiles="$(MSBuildThisFileDirectory)..\deploy\autocad\PackageContents.xml" DestinationFolder="$(_NexusStageBundle)" />
+    <Copy Condition="'$(MSBuildProjectName)' == 'Nexus.Agent.Acad'" SourceFiles="$(MSBuildThisFileDirectory)..\src\Nexus.Hub\Assets\Nexus.ico" DestinationFolder="$(_NexusStageBundle)Contents\Resources\" />
+  </Target>
+
+  <Target Name="NexusAutoCadApiNotice" BeforeTargets="Build">
+    <Message Importance="high" Condition="'$(UseInstalledAutoCadApi)' == 'true'" Text="Nexus: AutoCAD $(HostYear) API from $(AutoCadInstallDir)" />
+    <Warning Condition="'$(UseInstalledAutoCadApi)' != 'true' and '$(OS)' == 'Windows_NT'"
+             Text="Nexus: AutoCAD $(HostYear) not found at '$(AutoCadInstallDir)'. Compiling against the reference package instead. Set AutoCadInstallDir if it is installed elsewhere." />
+  </Target>
+</Project>

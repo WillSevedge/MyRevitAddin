@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Bulk Rename engine: the rules (RegEx, Name, Replace, Case, Remove, Add, Numbering, Filter), tokens,
+       name checks and presets. No host or UI code, so it is unit-tested and loaded inside Revit as is.
+       BCL only (System.Text.Json is part of .NET 8+; the net48 build gets it from Directory.Build.props). -->
+  <PropertyGroup>
+    <TargetFrameworks>$(SharedTargetFrameworks)</TargetFrameworks>
+    <RootNamespace>Nexus.Rename</RootNamespace>
+  </PropertyGroup>
+</Project>

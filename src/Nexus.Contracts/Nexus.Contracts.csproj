@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Host-neutral message types and DTOs. BCL only: no NuGet dependencies,
+       because this assembly is loaded inside Revit and AutoCAD. -->
+  <PropertyGroup>
+    <TargetFrameworks>$(SharedTargetFrameworks)</TargetFrameworks>
+    <RootNamespace>Nexus.Contracts</RootNamespace>
+  </PropertyGroup>
+</Project>

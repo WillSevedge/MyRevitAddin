@@ -1,0 +1,141 @@
+<Window x:Class="Nexus.Hub.PrintWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Nexus - Print &amp; PDF" Height="760" Width="1240" MinWidth="900" MinHeight="560"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Icon="Assets/Nexus.ico">
+  <Window.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    <Style x:Key="Label" TargetType="TextBlock">
+      <Setter Property="Margin" Value="0,10,0,4" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+    <Style x:Key="Hint" TargetType="TextBlock">
+      <Setter Property="Margin" Value="0,4,0,0" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+    </Style>
+  </Window.Resources>
+
+  <DockPanel Margin="24,18,24,20">
+    <!-- Header -->
+    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+      <TextBlock Text="Print &amp; PDF" FontSize="24" FontWeight="SemiBold" />
+      <TextBlock Text="{Binding Scope}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" />
+    </StackPanel>
+
+    <!-- Footer: progress, status and actions -->
+    <DockPanel DockPanel.Dock="Bottom" Margin="0,14,0,0">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button Content="Cancel" Command="{Binding CancelCommand}" Padding="14,6" Margin="0,0,8,0"
+                Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+        <Button Content="Open folder" Command="{Binding OpenFolderCommand}" Padding="14,6" />
+        <Button Content="Print…" Command="{Binding PrintCommand}" Padding="16,6" Margin="8,0,0,0"
+                ToolTip="Print the ticked sheets to any printer (PDFs are made first where missing)" />
+        <Button Content="Create PDFs" Command="{Binding CreateCommand}" Style="{DynamicResource AccentButtonStyle}" Padding="16,6" Margin="8,0,0,0" />
+        <Button Content="Close" IsCancel="True" Click="OnClose" Padding="16,6" Margin="8,0,0,0" />
+      </StackPanel>
+      <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+        <ProgressBar IsIndeterminate="True" Height="3" Margin="0,0,0,6" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+      </StackPanel>
+    </DockPanel>
+
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="5*" MinWidth="420" />
+        <ColumnDefinition Width="16" />
+        <ColumnDefinition Width="4*" MinWidth="320" />
+      </Grid.ColumnDefinitions>
+
+      <!-- Left: sheets and options -->
+      <DockPanel Grid.Column="0">
+        <StackPanel DockPanel.Dock="Bottom">
+          <TextBlock Text="Folder" Style="{StaticResource Label}" />
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Content="Browse…" Click="OnBrowse" Margin="8,0,0,0" />
+            <TextBox Text="{Binding Folder, UpdateSourceTrigger=PropertyChanged}" />
+          </DockPanel>
+          <Grid Margin="0,2,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="16" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+              <TextBlock Text="File names" Style="{StaticResource Label}" />
+              <TextBox Text="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas" />
+              <TextBlock Style="{StaticResource Hint}" Text="{}{Number}, {Name} and {File} are replaced: A101 - Floor Plan.pdf" />
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+              <CheckBox Content="Also combine into one PDF" IsChecked="{Binding Combine}" Margin="0,12,0,4" />
+              <TextBox Text="{Binding CombinedName, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Combine}" />
+              <CheckBox Content="Print on each sheet's own paper size (plotters)" IsChecked="{Binding MatchSheetSize}" Margin="0,8,0,0"
+                        ToolTip="Off: every sheet is fitted to the paper picked in the print dialog (half-size sets, check prints)." />
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+            <Button Content="All" Command="{Binding SelectAllCommand}" Padding="10,2" />
+            <Button Content="None" Command="{Binding SelectNoneCommand}" Padding="10,2" Margin="6,0,0,0" />
+          </StackPanel>
+          <TextBlock Text="{Binding CountText}" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+        </DockPanel>
+
+        <DataGrid ItemsSource="{Binding Sheets}" SelectedItem="{Binding Selected}" AutoGenerateColumns="False"
+                  CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" SelectionMode="Single"
+                  GridLinesVisibility="None" RowHeaderWidth="0">
+          <DataGrid.Columns>
+            <DataGridTemplateColumn Header="" Width="36">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <CheckBox IsChecked="{Binding Include, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" MinWidth="0" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Sheet Number" Binding="{Binding Number}" IsReadOnly="True" Width="Auto" />
+            <DataGridTextColumn Header="Sheet Name" Binding="{Binding Name}" IsReadOnly="True" Width="2*" />
+            <DataGridTextColumn Header="File" Binding="{Binding File}" IsReadOnly="True" Width="*" />
+            <DataGridTemplateColumn Header="Status" Width="1.4*">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Status}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Status}" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding Failed}" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+          </DataGrid.Columns>
+        </DataGrid>
+      </DockPanel>
+
+      <!-- Right: preview of the selected sheet -->
+      <Border Grid.Column="2" CornerRadius="8" BorderThickness="1"
+              BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+        <DockPanel Margin="12">
+          <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+            <Button DockPanel.Dock="Right" Content="Preview" Command="{Binding PreviewCommand}"
+                    ToolTip="Make a PDF of this sheet only, to look at it" />
+            <TextBlock Text="{Binding PreviewText}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,10,0"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+          </DockPanel>
+          <Border Background="White" CornerRadius="4" Visibility="{Binding HasPreview, Converter={StaticResource BoolToVis}}"
+                  MouseLeftButtonUp="OnOpenPreview" Cursor="Hand" ToolTip="Click to open the PDF">
+            <Image Source="{Binding Preview}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Margin="4" />
+          </Border>
+        </DockPanel>
+      </Border>
+    </Grid>
+  </DockPanel>
+</Window>

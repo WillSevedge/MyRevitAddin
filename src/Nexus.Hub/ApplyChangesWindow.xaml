@@ -1,0 +1,140 @@
+<Window x:Class="Nexus.Hub.ApplyChangesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Nexus.Hub.ViewModels"
+        xmlns:local="clr-namespace:Nexus.Hub"
+        Title="Nexus - Review changes" Height="680" Width="1040" MinWidth="760" MinHeight="420"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Icon="Assets/Nexus.ico">
+  <Window.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    <local:NotConverter x:Key="Not" />
+
+    <!-- Outcome after applying: icon + text, coloured by result. -->
+    <Style x:Key="OutcomeIcon" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Text" Value="" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding Status}" Value="Applied">
+          <Setter Property="Text" Value="&#xE73E;" />
+          <Setter Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="Unchanged">
+          <Setter Property="Text" Value="&#xE73E;" />
+          <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="Skipped">
+          <Setter Property="Text" Value="&#xE7BA;" />
+          <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="Failed">
+          <Setter Property="Text" Value="&#xEA39;" />
+          <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="NotSent">
+          <Setter Property="Text" Value="&#xE7C3;" />
+          <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- A change line: [x] Property   old → new   outcome -->
+    <DataTemplate x:Key="ChangeLine" DataType="{x:Type vm:ChangeRow}">
+      <Grid Margin="0,1" MinHeight="32">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="36" />
+          <ColumnDefinition Width="210" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <CheckBox IsChecked="{Binding Include}" IsEnabled="{Binding IsDone, Converter={StaticResource Not}}" VerticalAlignment="Center" MinWidth="0" />
+        <TextBlock Grid.Column="1" Text="{Binding Property}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                   ToolTip="{Binding Edit.ColumnId}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+        <WrapPanel Grid.Column="2" VerticalAlignment="Center">
+          <TextBlock Text="{Binding OldValue}" TextDecorations="Strikethrough" VerticalAlignment="Center" Margin="0,0,8,0"
+                     Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" MaxWidth="320" />
+          <TextBlock Text="(empty)" FontStyle="Italic" VerticalAlignment="Center" Margin="0,0,8,0"
+                     Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                     Visibility="{Binding OldIsEmpty, Converter={StaticResource BoolToVis}}" />
+          <TextBlock Text="&#xE72A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"
+                     Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+          <Border CornerRadius="4" Padding="6,2" Background="{DynamicResource SystemFillColorSuccessBackgroundBrush}">
+            <Grid>
+              <TextBlock Text="{Binding NewValue}" FontWeight="SemiBold" TextWrapping="Wrap" MaxWidth="320" />
+              <TextBlock Text="(empty)" FontStyle="Italic" Visibility="{Binding NewIsEmpty, Converter={StaticResource BoolToVis}}" />
+            </Grid>
+          </Border>
+        </WrapPanel>
+        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" MaxWidth="320" Margin="12,0,4,0"
+                    Visibility="{Binding IsDone, Converter={StaticResource BoolToVis}}" ToolTip="{Binding Message}">
+          <TextBlock Style="{StaticResource OutcomeIcon}" Margin="0,0,6,0" />
+          <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+            <Run Text="{Binding StatusText, Mode=OneWay}" FontWeight="SemiBold" />
+            <Run Text="{Binding Message, Mode=OneWay}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+          </TextBlock>
+        </StackPanel>
+      </Grid>
+    </DataTemplate>
+  </Window.Resources>
+
+  <DockPanel Margin="24,18,24,20">
+    <!-- Header -->
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom">
+        <Button Content="Select all" Command="{Binding SelectAllCommand}" Padding="10,3" />
+        <Button Content="Select none" Command="{Binding SelectNoneCommand}" Padding="10,3" Margin="6,0,0,0" />
+      </StackPanel>
+      <StackPanel>
+        <TextBlock Text="{Binding Summary}" FontSize="24" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" TextWrapping="Wrap" />
+      </StackPanel>
+    </DockPanel>
+
+    <!-- Footer -->
+    <DockPanel DockPanel.Dock="Bottom" Margin="0,14,0,0">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <Button Content="{Binding ApplyText}" Command="{Binding ApplyCommand}" Style="{DynamicResource AccentButtonStyle}" IsDefault="True" Padding="16,6" />
+        <Button Content="{Binding CloseLabel}" IsCancel="True" Click="OnClose" Margin="8,0,0,0" Padding="16,6" />
+      </StackPanel>
+      <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                 Text="Each file gets one undo step (&quot;Nexus: edit …&quot;): Undo in Revit, or U in AutoCAD, reverts it. Values changed in a file since they were read are skipped." />
+    </DockPanel>
+
+    <!-- Files › sheets › changes -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <ItemsControl ItemsSource="{Binding Files}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="{x:Type vm:ChangeFileGroup}">
+            <Border CornerRadius="8" Padding="14,10" Margin="0,0,0,10" BorderThickness="1"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+              <StackPanel>
+                <DockPanel Margin="0,0,0,6">
+                  <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                  <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center" MinWidth="0" Margin="0,0,10,0" />
+                  <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                    <Run Text="{Binding Name, Mode=OneWay}" FontSize="15" FontWeight="SemiBold" />
+                    <Run Text="{Binding Program, Mode=OneWay, StringFormat='  {0}'}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                  </TextBlock>
+                </DockPanel>
+                <ItemsControl ItemsSource="{Binding Items}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:ChangeItemGroup}">
+                      <StackPanel Margin="0,6,0,2">
+                        <DockPanel Margin="0,0,0,2">
+                          <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center" MinWidth="0" Margin="0,0,10,0" />
+                          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                        <ItemsControl ItemsSource="{Binding Changes}" ItemTemplate="{StaticResource ChangeLine}" Margin="24,0,0,0" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

@@ -1,0 +1,58 @@
+name: Build and test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    # Windows: the add-ins and the hub target net10.0-windows. No Autodesk product is needed:
+    # the build falls back to Autodesk's compile-only reference packages.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Nexus.sln
+
+      # DeployToHost=false: do not copy add-ins into Revit/AutoCAD folders or install the hub.
+      - name: Build
+        run: dotnet build Nexus.sln --configuration Release --no-restore -p:DeployToHost=false
+
+      - name: Test
+        run: dotnet test tests/Nexus.Tests/Nexus.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=results.trx" --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults
+
+  addins:
+    # Every program year the add-ins support, compiled against Autodesk's reference packages.
+    name: Add-ins ${{ matrix.year }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        year: [2024, 2025, 2026, 2027]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build Revit, AutoCAD, Civil 3D and Plant 3D add-ins
+        shell: pwsh
+        run: |
+          foreach ($p in 'Nexus.Agent.Revit','Nexus.Agent.Acad','Nexus.Agent.Acad.Civil3D','Nexus.Agent.Acad.Plant3D','Nexus.Agent.Acad.Console') {
+            dotnet build "src/$p/$p.csproj" --configuration Release -p:HostYear=${{ matrix.year }} -p:DeployToHost=false
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }

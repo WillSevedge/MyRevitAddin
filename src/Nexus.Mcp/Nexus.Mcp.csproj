@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- MCP server for AI assistants (Claude Desktop, Claude Code…): talks to the Nexus add-ins in AutoCAD (and Revit)
+       over the same pipes as the hub. Started by the assistant over stdio; see README › AI assistants (MCP). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>nexus-mcp</AssemblyName>
+    <RootNamespace>Nexus.Mcp</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Nexus.Hub.Core\Nexus.Hub.Core.csproj" />
+  </ItemGroup>
+</Project>

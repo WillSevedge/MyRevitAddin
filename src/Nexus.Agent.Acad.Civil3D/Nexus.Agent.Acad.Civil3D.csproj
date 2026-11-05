@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Civil 3D module. The ONLY project that references the Civil 3D API.
+       Loaded at runtime by the core agent when Civil 3D is detected (modules.json). -->
+  <PropertyGroup>
+    <TargetFramework>$(HostTargetFramework)</TargetFramework>
+    <!-- The AutoCAD 2026 API references the Windows Desktop WindowsBase (WPF); avoids MSB3277. -->
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>Nexus.Agent.Acad.Civil3D</RootNamespace>
+    <AssemblyName>Nexus.Agent.Acad.Civil3D</AssemblyName>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <GenerateRuntimeConfigurationFiles>false</GenerateRuntimeConfigurationFiles>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- UseWPF drops System.IO from the implicit usings (Path clash with WPF shapes, not used here). -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The core agent is already loaded by AutoCAD; do not copy it again. -->
+    <ProjectReference Include="..\Nexus.Agent.Acad\Nexus.Agent.Acad.csproj" Private="false" />
+    <ProjectReference Include="..\Nexus.Agent.Shared\Nexus.Agent.Shared.csproj" Private="false" />
+    <ProjectReference Include="..\Nexus.Contracts\Nexus.Contracts.csproj" Private="false" />
+  </ItemGroup>
+
+  <Import Project="..\..\build\AutoCad.targets" />
+
+  <PropertyGroup>
+    <CivilDbMgdPath Condition="Exists('$(AutoCadInstallDir)C3D\AeccDbMgd.dll')">$(AutoCadInstallDir)C3D\AeccDbMgd.dll</CivilDbMgdPath>
+    <AecBaseMgdPath Condition="Exists('$(AutoCadInstallDir)ACA\AecBaseMgd.dll')">$(AutoCadInstallDir)ACA\AecBaseMgd.dll</AecBaseMgdPath>
+    <AecBaseMgdPath Condition="'$(AecBaseMgdPath)' == '' and Exists('$(AutoCadInstallDir)AecBaseMgd.dll')">$(AutoCadInstallDir)AecBaseMgd.dll</AecBaseMgdPath>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(CivilDbMgdPath)' != ''">
+    <Reference Include="AeccDbMgd"><HintPath>$(CivilDbMgdPath)</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(CivilDbMgdPath)' != '' and '$(AecBaseMgdPath)' != ''">
+    <Reference Include="AecBaseMgd"><HintPath>$(AecBaseMgdPath)</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(CivilDbMgdPath)' == ''">
+    <PackageReference Include="Civil3D.NET" Version="$(Civil3DApiPackageVersion)" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <Target Name="NexusCivilApiNotice" BeforeTargets="Build">
+    <Message Importance="high" Condition="'$(CivilDbMgdPath)' != ''" Text="Nexus: Civil 3D API from $(CivilDbMgdPath)" />
+    <Warning Condition="'$(CivilDbMgdPath)' == '' and '$(OS)' == 'Windows_NT'"
+             Text="Nexus: Civil 3D $(HostYear) API not found under '$(AutoCadInstallDir)C3D'. Compiling against the reference package instead." />
+  </Target>
+
+  <Target Name="NexusDeployCivilModule" AfterTargets="Build" DependsOnTargets="NexusCheckAcadRunning"
+          Condition="'$(NexusAcadDeploy)' == 'true' and '$(_NexusAcadInUse)' != 'true'">
+    <Copy SourceFiles="$(TargetPath);$(TargetDir)$(TargetName).pdb" DestinationFolder="$(AcadBundleContentDir)"
+          SkipUnchangedFiles="true" Retries="0" ContinueOnError="WarnAndContinue" />
+    <Message Importance="high" Text="Nexus: deployed Civil 3D module to $(AcadBundleContentDir)" />
+  </Target>
+</Project>

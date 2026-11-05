@@ -1,0 +1,25 @@
+{
+  "//": "Optional vertical modules. The core agent loads a module only when one of its detect rules matches. Add a vertical by adding an entry here and dropping its DLL next to the core agent.",
+  "modules": [
+    {
+      "name": "Civil3D",
+      "assembly": "Nexus.Agent.Acad.Civil3D.dll",
+      "productName": "Civil 3D",
+      "detect": {
+        "commandLineProducts": [ "C3D" ],
+        "loadedAssemblies": [ "AeccDbMgd" ],
+        "loadedArxPrefixes": [ "aecc" ]
+      }
+    },
+    {
+      "name": "Plant3D",
+      "assembly": "Nexus.Agent.Acad.Plant3D.dll",
+      "productName": "Plant 3D",
+      "detect": {
+        "commandLineProducts": [ "PLNT3D" ],
+        "loadedAssemblies": [ "PnPProjectManagerMgd", "PnP3dObjectsMgd", "PnPDataLinks" ],
+        "loadedArxPrefixes": [ "PnP" ]
+      }
+    }
+  ]
+}
